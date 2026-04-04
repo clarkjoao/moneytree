@@ -7,10 +7,10 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from models.transaction import Classificacao, Transaction
-from parsers.banks.itau.extrato import extrato_metadata_kind, try_parse_extrato_line
-from parsers.banks.itau.fatura import ItauFaturaParser, parse_fatura_line_for_tests
-from classifier.rule_engine import apply_rule_engine
+from backend.models.transaction import Classificacao, Transaction
+from backend.parsers.banks.itau.extrato import extrato_metadata_kind, try_parse_extrato_line
+from backend.parsers.banks.itau.fatura import ItauFaturaParser, parse_fatura_line_for_tests
+from backend.classifier.rule_engine import apply_rule_engine
 
 
 def test_fatura_parse_basic_line() -> None:
@@ -175,8 +175,8 @@ def test_fallback_triggers_record_unparsed(tmp_path: Path) -> None:
     parser = ItauFaturaParser(fonte="fatura_test", default_year=2026)
     pdf_path = Path("dummy_fatura.pdf")
 
-    with patch("parsers.banks.itau.fatura.pdfplumber.open") as open_mock, patch(
-        "parsers.banks.itau.fatura.record_unparsed_page"
+    with patch("backend.parsers.banks.itau.fatura.pdfplumber.open") as open_mock, patch(
+        "backend.parsers.banks.itau.fatura.record_unparsed_page"
     ) as record_mock:
         open_mock.return_value.__enter__.return_value = fake_pdf
         open_mock.return_value.__exit__.return_value = None

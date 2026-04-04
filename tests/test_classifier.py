@@ -7,12 +7,12 @@ from pathlib import Path
 
 import pytest
 
-from classifier.context_engine import apply_context_engine
-from classifier.llm_classifier import _parse_llm_payload
-from classifier.recurrence_detector import run_recurrence_detection
-from classifier.review import apply_review_csv, needs_human_review, write_review_csv
-from classifier.rule_engine import apply_rule_engine, append_exact_rule
-from models.transaction import Classificacao, Transaction
+from backend.classifier.context_engine import apply_context_engine
+from backend.classifier.llm_classifier import _parse_llm_payload
+from backend.classifier.recurrence_detector import run_recurrence_detection
+from backend.classifier.review import apply_review_csv, needs_human_review, write_review_csv
+from backend.classifier.rule_engine import apply_rule_engine, append_exact_rule
+from backend.models.transaction import Classificacao, Transaction
 
 
 def test_por_descricao_substring_rule() -> None:

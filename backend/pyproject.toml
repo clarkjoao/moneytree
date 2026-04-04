@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "moneytree"
+version = "0.1.0"
+description = "Controle financeiro pessoal — parsing de PDFs Itaú"
+requires-python = ">=3.10"
+dependencies = [
+    "pydantic>=2.0,<3",
+    "pdfplumber>=0.11",
+    "markitdown[pdf]>=0.0.1",
+    "pypdf>=4.0",
+    "duckdb>=1.0",
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+llm = [
+    "anthropic>=0.40",
+    "openai>=1.0",
+]
+
+[project.scripts]
+moneytree = "backend.cli:main"
+
+[tool.setuptools]
+package-dir = {"backend" = "."}
+packages = [
+    "backend",
+    "backend.api",
+    "backend.api.routes",
+    "backend.analyzer",
+    "backend.classifier",
+    "backend.models",
+    "backend.parsers",
+    "backend.parsers.banks",
+    "backend.parsers.banks.itau",
+    "backend.transaction_store",
+]

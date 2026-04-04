@@ -4,10 +4,10 @@ import json
 from datetime import date
 from pathlib import Path
 
-from analyzer.anomaly import detect_anomalies
-from analyzer.metrics import compute_month
-from analyzer.report import write_month_report
-from models.transaction import Classificacao, Transaction
+from backend.analyzer.anomaly import detect_anomalies
+from backend.analyzer.metrics import compute_month
+from backend.analyzer.report import write_month_report
+from backend.models.transaction import Classificacao, Transaction
 
 
 def _processed_root(project: Path) -> Path:

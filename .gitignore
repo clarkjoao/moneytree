@@ -208,6 +208,12 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 
+# MoneyTree — dados locais e artefatos de build
+backend/data/raw/
+backend/data/processed/
+frontend/node_modules/
+frontend/dist/
+
 # Marimo
 marimo/_static/
 marimo/_lsp/
