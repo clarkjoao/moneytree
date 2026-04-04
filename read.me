@@ -1,0 +1,13 @@
+python main.py parse --input ./data/raw/
+python main.py classify --mes 2026-03
+python main.py classify --mes 2026-03 --no-llm
+python main.py review --mes 2026-03
+python main.py apply-review --mes 2026-03
+
+
+cd /Users/clark/www/moneytree
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e '.[dev]'
+python main.py parse --input ./data/raw/
+python main.py parse --input ./data/raw/ --fallback-markitdown
+pytest tests/test_parsers.py -v

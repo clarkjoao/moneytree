@@ -1,0 +1,30 @@
+{
+  "por_descricao": {},
+  "mapeamentos": [],
+  "padroes_descricao": [
+    {
+      "contem": "FOLHA PAGAMENTO MENSAL",
+      "categoria": "Receita",
+      "natureza": "Essencial",
+      "recorrencia": "Fixa",
+      "compromisso": null,
+      "contexto": null
+    },
+    {
+      "contem": "FOLHA DE PARTICIPACAO",
+      "categoria": "Receita",
+      "natureza": "Essencial",
+      "recorrencia": "Fixa",
+      "compromisso": null,
+      "contexto": null
+    },
+    {
+      "contem": "APLICACAO COFRINHOS",
+      "categoria": "Investimento",
+      "natureza": "Investimento",
+      "recorrencia": "Variável recorrente",
+      "compromisso": null,
+      "contexto": null
+    }
+  ]
+}

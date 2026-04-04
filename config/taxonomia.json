@@ -1,0 +1,35 @@
+{
+  "categorias": [
+    "Moradia",
+    "Saúde",
+    "Alimentação",
+    "Transporte",
+    "Educação",
+    "Lazer",
+    "Vestuário",
+    "Serviços Digitais",
+    "Investimento",
+    "Transferência",
+    "Transferência Interna",
+    "Receita",
+    "Outros"
+  ],
+  "natureza": [
+    "Essencial",
+    "Lazer",
+    "Investimento",
+    "Imposto",
+    "Transferência"
+  ],
+  "recorrencia": [
+    "Fixa",
+    "Variável recorrente",
+    "Pontual"
+  ],
+  "contextos": [
+    "Rotina Campinas",
+    "Trabalho SP",
+    "Viagem",
+    "Outros"
+  ]
+}
