@@ -100,6 +100,7 @@ class RecurrenceRow(BaseModel):
     descricao_exibicao: str
     valor_mes: float
     variacao_percentual_vs_media_3m: float | None
+    transaction_ids: list[str] = Field(default_factory=list)
 
 
 class CategoryComparisonRow(BaseModel):
@@ -361,7 +362,7 @@ def _run_duckdb_on_rows(rows: list[dict], mes: str, prior_months: list[str]) -> 
             prior_in = ",".join(f"'{key}'" for key in prior_months)
             rec_query = f"""
             WITH atual AS (
-                SELECT descricao_original, metodo, SUM(valor) AS valor_mes
+                SELECT descricao_original, metodo, SUM(valor) AS valor_mes, list(id) AS transaction_ids
                 FROM tx
                 WHERE mes_origem = '{mes_sql}'
                   AND tipo = 'debito'
@@ -382,7 +383,7 @@ def _run_duckdb_on_rows(rows: list[dict], mes: str, prior_months: list[str]) -> 
                 ) sub
                 GROUP BY descricao_original
             )
-            SELECT atual.descricao_original, atual.metodo, atual.valor_mes, hist.media
+            SELECT atual.descricao_original, atual.metodo, atual.valor_mes, hist.media, atual.transaction_ids
             FROM atual
             LEFT JOIN hist ON atual.descricao_original = hist.descricao_original
             """
@@ -390,7 +391,7 @@ def _run_duckdb_on_rows(rows: list[dict], mes: str, prior_months: list[str]) -> 
         else:
             rec_rows = con.execute(
                 f"""
-                SELECT descricao_original, metodo, SUM(valor) AS valor_mes, NULL::DOUBLE AS media
+                SELECT descricao_original, metodo, SUM(valor) AS valor_mes, NULL::DOUBLE AS media, list(id) AS transaction_ids
                 FROM tx
                 WHERE mes_origem = '{mes_sql}'
                   AND tipo = 'debito'
@@ -401,7 +402,7 @@ def _run_duckdb_on_rows(rows: list[dict], mes: str, prior_months: list[str]) -> 
             ).fetchall()
 
         recorrencias = []
-        for descricao, metodo, valor_mes, media in rec_rows:
+        for descricao, metodo, valor_mes, media, transaction_ids in rec_rows:
             valor_mes_f = float(valor_mes or 0)
             var_pct = None
             if media is not None and float(media) > 0:
@@ -411,6 +412,7 @@ def _run_duckdb_on_rows(rows: list[dict], mes: str, prior_months: list[str]) -> 
                     descricao_exibicao=_merchant_label(str(descricao), str(metodo)),
                     valor_mes=round(valor_mes_f, 2),
                     variacao_percentual_vs_media_3m=var_pct,
+                    transaction_ids=list(transaction_ids) if transaction_ids else [],
                 )
             )
 

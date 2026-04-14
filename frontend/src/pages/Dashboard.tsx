@@ -51,7 +51,10 @@ export default function Dashboard() {
           <p className="text-neutral-400">Aqui está o resumo focado das suas finanças neste mês.</p>
         </div>
         
-        <Select value={selectedMonth} onValueChange={(v) => v && setSelectedMonth(v)}>
+        <Select
+          value={selectedMonth || null}
+          onValueChange={(value) => value && setSelectedMonth(value)}
+        >
           <SelectTrigger className="w-[180px] bg-neutral-900 border-neutral-800 text-neutral-50 font-medium">
             <SelectValue placeholder="Selecione o mês" />
           </SelectTrigger>

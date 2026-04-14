@@ -1,23 +1,94 @@
-import { useState, useEffect } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { fetchTransactions, fetchMonths, patchTransaction } from '@/lib/api'
+import {
+  fetchTransactions,
+  fetchMonths,
+  patchTransaction,
+  fetchTaxonomy,
+  postTaxonomyCategoria,
+  postTaxonomyNatureza,
+} from '@/lib/api'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Drawer, DrawerContent, DrawerDescription, DrawerHeader, DrawerTitle, DrawerFooter, DrawerClose } from '@/components/ui/drawer'
+import {
+  Dialog,
+  DialogBody,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+
+const COMPROMISSO_OPTIONS = [
+  { value: 'a_vista', label: 'À vista' },
+  { value: 'parcela', label: 'Parcelado' },
+  { value: 'assinatura', label: 'Assinatura' },
+]
+
+const ADD_CATEGORIA_VALUE = '__moneytree_nova_categoria__'
+const ADD_NATUREZA_VALUE = '__moneytree_nova_natureza__'
+const LABEL_NOVA_CATEGORIA = '\uFF0B Nova categoria...'
+const LABEL_NOVA_NATUREZA = '\uFF0B Nova natureza...'
+
+interface ParcelaInfo {
+  numero: number
+  total: number
+}
+
+interface TransactionRow {
+  id: string
+  data: string
+  descricao_original: string
+  valor: number
+  tipo: 'debito' | 'credito'
+  meio: 'cartao_credito' | 'debito_pix'
+  parcela_info: ParcelaInfo | null
+  classificacao: {
+    categoria?: string | null
+    natureza?: string | null
+    contexto?: string | null
+    recorrencia?: string | null
+    compromisso?: string | null
+    metodo: string
+  }
+}
+
+function formatMeio(meio: TransactionRow['meio']): string {
+  if (meio === 'cartao_credito') return 'Cartão de crédito'
+  return 'Débito / Pix'
+}
+
+function isPendingTx(tx: TransactionRow): boolean {
+  return tx.classificacao.metodo === 'pendente' || tx.classificacao.metodo === 'llm'
+}
 
 export default function Transactions() {
   const queryClient = useQueryClient()
   const { data: monthsData } = useQuery({ queryKey: ['months'], queryFn: fetchMonths })
+  const { data: taxonomy } = useQuery({ queryKey: ['taxonomy'], queryFn: fetchTaxonomy })
   const [selectedMonth, setSelectedMonth] = useState<string>('')
-  
-  const [selectedTx, setSelectedTx] = useState<any | null>(null)
-  
-  // Drawer form state
-  const [form, setForm] = useState<any>({})
+  const [showPendingOnly, setShowPendingOnly] = useState(true)
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
+
+  const [selectedTx, setSelectedTx] = useState<TransactionRow | null>(null)
+  const [form, setForm] = useState({
+    categoria: '',
+    natureza: '',
+    contexto: '',
+    recorrencia: '',
+    compromisso: '',
+  })
+
+  const [creatingCategoria, setCreatingCategoria] = useState(false)
+  const [creatingNatureza, setCreatingNatureza] = useState(false)
+  const [novaCategoriaInput, setNovaCategoriaInput] = useState('')
+  const [novaNaturezaInput, setNovaNaturezaInput] = useState('')
 
   useEffect(() => {
     if (monthsData?.months?.length > 0 && !selectedMonth) {
@@ -27,51 +98,149 @@ export default function Transactions() {
 
   const { data: transactions, isLoading } = useQuery({
     queryKey: ['transactions', selectedMonth],
-    queryFn: () => fetchTransactions(selectedMonth),
+    queryFn: () => fetchTransactions(selectedMonth) as Promise<TransactionRow[]>,
     enabled: !!selectedMonth,
   })
 
   const patchMutation = useMutation({
-    mutationFn: (data: any) => patchTransaction(data.id, selectedMonth, data.classificacao),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['transactions', selectedMonth] })
-      setSelectedTx(null)
-    }
+    mutationFn: (data: { id: string; classificacao: Record<string, unknown> }) =>
+      patchTransaction(data.id, selectedMonth, data.classificacao),
   })
 
-  // Group formatting
-  const BRL = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
+  const addCategoriaMutation = useMutation({
+    mutationFn: (valor: string) => postTaxonomyCategoria(valor),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['taxonomy'] }),
+  })
+
+  const addNaturezaMutation = useMutation({
+    mutationFn: (valor: string) => postTaxonomyNatureza(valor),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['taxonomy'] }),
+  })
+
+  const BRL = useMemo(() => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }), [])
+
   const formatDate = (dateStr: string) => {
     const [y, m, d] = dateStr.split('-')
     return `${d}/${m}/${y}`
   }
 
-  const openDrawer = (tx: any) => {
+  const pendingList: TransactionRow[] = useMemo(
+    () => transactions?.filter(isPendingTx) ?? [],
+    [transactions]
+  )
+  const confirmedCount = (transactions?.length ?? 0) - pendingList.length
+
+  const filteredTransactions = useMemo(
+    () =>
+      transactions?.filter((tx) => {
+        if (showPendingOnly && !isPendingTx(tx)) return false
+        if (categoryFilter !== 'all' && (tx.classificacao.categoria || '') !== categoryFilter) return false
+        return true
+      }) ?? [],
+    [transactions, showPendingOnly, categoryFilter]
+  )
+
+  const filteredPendingList = useMemo(
+    () => filteredTransactions.filter(isPendingTx),
+    [filteredTransactions]
+  )
+
+  const currentPendingIndex = selectedTx
+    ? filteredPendingList.findIndex((tx) => tx.id === selectedTx.id)
+    : -1
+
+  const resetModalAuxState = () => {
+    setCreatingCategoria(false)
+    setCreatingNatureza(false)
+    setNovaCategoriaInput('')
+    setNovaNaturezaInput('')
+  }
+
+  const openDrawer = (tx: TransactionRow) => {
     setSelectedTx(tx)
+    resetModalAuxState()
     setForm({
-      categoria: tx.classificacao?.categoria || '',
-      natureza: tx.classificacao?.natureza || '',
-      contexto: tx.classificacao?.contexto || '',
-      recorrencia: tx.classificacao?.recorrencia || '',
+      categoria: tx.classificacao?.categoria ?? '',
+      natureza: tx.classificacao?.natureza ?? '',
+      contexto: tx.classificacao?.contexto ?? '',
+      recorrencia: tx.classificacao?.recorrencia ?? '',
+      compromisso: tx.classificacao?.compromisso ?? '',
     })
   }
 
-  const handleSave = () => {
-    if (!selectedTx) return
-    patchMutation.mutate({
-      id: selectedTx.id,
-      classificacao: {
-        ...form,
-        // Ao revisar manualmente, a confiança sobe para 1.0 (confirma a regra se aplicavel)
-        confianca: 1.0, 
-        metodo: "confirmado"
-      }
-    })
+  const closeModal = () => {
+    setSelectedTx(null)
+    resetModalAuxState()
   }
+
+  const handleConfirmClassification = () => {
+    if (!selectedTx || !form.categoria.trim() || !form.natureza.trim()) return
+    const nextTx = currentPendingIndex >= 0 ? filteredPendingList[currentPendingIndex + 1] : undefined
+
+    patchMutation.mutate(
+      {
+        id: selectedTx.id,
+        classificacao: {
+          ...form,
+          confianca: 1.0,
+          metodo: 'confirmado',
+        },
+      },
+      {
+        onSuccess: async () => {
+          await queryClient.invalidateQueries({ queryKey: ['transactions', selectedMonth] })
+          if (nextTx) {
+            const refreshedList = queryClient.getQueryData(['transactions', selectedMonth]) as
+              | TransactionRow[]
+              | undefined
+            const next = refreshedList?.find((t) => t.id === nextTx.id)
+            if (next && isPendingTx(next)) {
+              openDrawer(next)
+              return
+            }
+          }
+          closeModal()
+        },
+      }
+    )
+  }
+
+  const goToPrev = () => {
+    if (currentPendingIndex > 0) openDrawer(filteredPendingList[currentPendingIndex - 1])
+  }
+
+  const goToNext = () => {
+    if (currentPendingIndex < filteredPendingList.length - 1) {
+      openDrawer(filteredPendingList[currentPendingIndex + 1])
+    }
+  }
+
+  const handleAddCategoria = async () => {
+    const valor = novaCategoriaInput.trim()
+    if (!valor) return
+    await addCategoriaMutation.mutateAsync(valor)
+    setForm((previous) => ({ ...previous, categoria: valor }))
+    setCreatingCategoria(false)
+    setNovaCategoriaInput('')
+  }
+
+  const handleAddNatureza = async () => {
+    const valor = novaNaturezaInput.trim()
+    if (!valor) return
+    await addNaturezaMutation.mutateAsync(valor)
+    setForm((previous) => ({ ...previous, natureza: valor }))
+    setCreatingNatureza(false)
+    setNovaNaturezaInput('')
+  }
+
+  const confirmDisabled =
+    patchMutation.isPending ||
+    !form.categoria.trim() ||
+    !form.natureza.trim() ||
+    creatingCategoria ||
+    creatingNatureza
 
   if (!monthsData?.months?.length) return <div className="p-8 text-neutral-400">Sem dados.</div>
-
-  const isPending = (status: string) => status === 'pendente' || status === 'llm'
 
   return (
     <div className="flex-1 p-6 md:p-10 space-y-6 animate-in fade-in duration-500 pb-24">
@@ -80,16 +249,61 @@ export default function Transactions() {
           <h1 className="text-3xl font-bold tracking-tight text-neutral-50 mb-1">Transações</h1>
           <p className="text-neutral-400">Verifique e corrija os metadados de cada gasto.</p>
         </div>
-        <Select value={selectedMonth} onValueChange={(v) => v && setSelectedMonth(v)}>
+        <Select
+          value={selectedMonth || null}
+          onValueChange={(value) => value && setSelectedMonth(value)}
+        >
           <SelectTrigger className="w-[180px] bg-neutral-900 border-neutral-800 text-neutral-50 font-medium">
             <SelectValue placeholder="Selecione o mês" />
           </SelectTrigger>
           <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-50">
-            {monthsData.months.map((m: string) => (
-              <SelectItem key={m} value={m}>{m}</SelectItem>
+            {monthsData.months.map((monthKey: string) => (
+              <SelectItem key={monthKey} value={monthKey}>
+                {monthKey}
+              </SelectItem>
             ))}
           </SelectContent>
         </Select>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setShowPendingOnly(!showPendingOnly)}
+          className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+            showPendingOnly
+              ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
+              : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-300'
+          }`}
+        >
+          <span className="w-2 h-2 rounded-full bg-current" />
+          Apenas pendentes
+        </button>
+
+        <span className="text-sm text-neutral-500">
+          <span className="text-amber-400 font-medium">{pendingList.length}</span> pendentes
+          {' · '}
+          <span className="text-emerald-400 font-medium">{confirmedCount}</span> confirmadas
+        </span>
+
+        <div className="ml-auto">
+          <Select
+            value={categoryFilter || null}
+            onValueChange={(value) => setCategoryFilter(value ?? 'all')}
+          >
+            <SelectTrigger className="w-[180px] bg-neutral-900 border-neutral-800 text-neutral-300 text-sm h-8">
+              <SelectValue placeholder="Filtrar categoria" />
+            </SelectTrigger>
+            <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+              <SelectItem value="all">Todas as categorias</SelectItem>
+              {taxonomy?.categorias?.map((categoria: string) => (
+                <SelectItem key={categoria} value={categoria}>
+                  {categoria}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       <div className="rounded-xl border border-neutral-800 overflow-hidden bg-neutral-900/30">
@@ -107,112 +321,319 @@ export default function Transactions() {
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-32 text-neutral-500">Carregando...</TableCell>
+                <TableCell colSpan={6} className="text-center h-32 text-neutral-500">
+                  Carregando...
+                </TableCell>
               </TableRow>
             )}
-            {transactions?.map((tx: any) => (
-              <TableRow 
-                key={tx.id} 
+            {filteredTransactions.map((tx) => (
+              <TableRow
+                key={tx.id}
                 onClick={() => openDrawer(tx)}
-                className="border-neutral-800 hover:bg-neutral-800/50 cursor-pointer cursor-auto transition-colors group"
+                className="border-neutral-800 hover:bg-neutral-800/50 cursor-pointer transition-colors group"
               >
                 <TableCell className="text-neutral-300 py-3">{formatDate(tx.data)}</TableCell>
                 <TableCell className="font-medium text-neutral-200">{tx.descricao_original}</TableCell>
                 <TableCell className={tx.tipo === 'debito' ? 'text-red-400' : 'text-emerald-400'}>
-                  {tx.tipo === 'debito' ? '-' : ''}{BRL.format(tx.valor)}
+                  {tx.tipo === 'debito' ? '-' : ''}
+                  {BRL.format(tx.valor)}
                 </TableCell>
                 <TableCell className="text-neutral-400">{tx.classificacao.categoria || '-'}</TableCell>
-                <TableCell className="text-neutral-400 hidden md:table-cell">{tx.classificacao.contexto || '-'}</TableCell>
+                <TableCell className="text-neutral-400 hidden md:table-cell">
+                  {tx.classificacao.contexto || '-'}
+                </TableCell>
                 <TableCell className="text-right">
-                  <Badge variant="outline" className={
-                    isPending(tx.classificacao.metodo) 
-                      ? "border-amber-500/30 text-amber-500 bg-amber-500/10" 
-                      : "border-emerald-500/30 text-emerald-500 bg-emerald-500/10"
-                  }>
+                  <Badge
+                    variant="outline"
+                    className={
+                      isPendingTx(tx)
+                        ? 'border-amber-500/30 text-amber-500 bg-amber-500/10'
+                        : 'border-emerald-500/30 text-emerald-500 bg-emerald-500/10'
+                    }
+                  >
                     {tx.classificacao.metodo}
                   </Badge>
                 </TableCell>
               </TableRow>
             ))}
-            {transactions?.length === 0 && (
+            {filteredTransactions.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-32 text-neutral-500">Nenhuma transação encontrada</TableCell>
+                <TableCell colSpan={6} className="text-center h-32 text-neutral-500">
+                  {showPendingOnly ? 'Nenhuma transação pendente' : 'Nenhuma transação encontrada'}
+                </TableCell>
               </TableRow>
             )}
           </TableBody>
         </Table>
       </div>
 
-      <Drawer open={!!selectedTx} onClose={() => setSelectedTx(null)} onOpenChange={(o) => !o && setSelectedTx(null)}>
-        <DrawerContent className="bg-neutral-950 border-neutral-800 text-neutral-200 sm:max-w-[480px] mx-auto md:mb-4 lg:fixed lg:right-4 lg:bottom-4 lg:top-4 lg:w-[400px] p-0 overflow-hidden outline-none flex flex-col justify-between">
-          <div className="p-6 overflow-y-auto">
-            <DrawerHeader className="px-0 pb-6 border-b border-neutral-800">
-              <DrawerTitle className="text-xl">{selectedTx?.descricao_original}</DrawerTitle>
-              <DrawerDescription className="text-neutral-400 mt-2 flex justify-between">
+      <Dialog open={!!selectedTx} onOpenChange={(open) => !open && closeModal()}>
+        <DialogContent showClose onClose={closeModal}>
+          <DialogHeader>
+            <DialogTitle
+              className="line-clamp-2 pr-2 text-left"
+              title={selectedTx?.descricao_original}
+            >
+              {selectedTx?.descricao_original}
+            </DialogTitle>
+            <DialogDescription className="flex flex-col gap-2 text-left">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <span>{selectedTx ? formatDate(selectedTx.data) : ''}</span>
-                <span className="font-mono text-emerald-400">{selectedTx ? BRL.format(selectedTx.valor) : ''}</span>
-              </DrawerDescription>
-            </DrawerHeader>
+                <span
+                  className={`font-mono font-medium ${
+                    selectedTx?.tipo === 'debito' ? 'text-red-400' : 'text-emerald-400'
+                  }`}
+                >
+                  {selectedTx ? `${selectedTx.tipo === 'debito' ? '-' : ''}${BRL.format(selectedTx.valor)}` : ''}
+                </span>
+              </div>
+              <div className="flex flex-col gap-1 text-xs text-neutral-500">
+                <span>{selectedTx ? formatMeio(selectedTx.meio) : ''}</span>
+                {selectedTx?.parcela_info ? (
+                  <span>
+                    Parcela {selectedTx.parcela_info.numero} de {selectedTx.parcela_info.total}
+                  </span>
+                ) : null}
+              </div>
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="space-y-5 py-6">
-              <div className="grid gap-2">
-                <Label htmlFor="categoria" className="text-neutral-400">Categoria</Label>
-                <Input 
-                  id="categoria" 
-                  value={form.categoria} 
-                  onChange={e => setForm({...form, categoria: e.target.value})}
-                  className="bg-neutral-900 border-neutral-800 text-neutral-100" 
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="natureza" className="text-neutral-400">Natureza</Label>
-                <Input 
-                  id="natureza" 
-                  value={form.natureza} 
-                  onChange={e => setForm({...form, natureza: e.target.value})}
-                  className="bg-neutral-900 border-neutral-800 text-neutral-100" 
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="contexto" className="text-neutral-400">Contexto</Label>
-                <Input 
-                  id="contexto" 
-                  value={form.contexto} 
-                  onChange={e => setForm({...form, contexto: e.target.value})}
-                  className="bg-neutral-900 border-neutral-800 text-neutral-100" 
-                />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="recorrencia" className="text-neutral-400">Recorrência</Label>
-                <Input 
-                  id="recorrencia" 
-                  value={form.recorrencia} 
-                  onChange={e => setForm({...form, recorrencia: e.target.value})}
-                  className="bg-neutral-900 border-neutral-800 text-neutral-100" 
-                />
-              </div>
-              
-              <div className="p-3 bg-neutral-900 rounded border border-neutral-800 mt-2">
-                <p className="text-xs text-neutral-400">
-                  Ao salvar, a transação receberá método <code className="text-emerald-400 bg-neutral-950 px-1 rounded">confirmado</code>. 
-                  Regras com descrição exata serão atualizadas no backend!
-                </p>
-              </div>
+          <DialogBody className="space-y-5">
+            <div className="grid gap-2">
+              <Label className="text-neutral-400">Categoria</Label>
+              {creatingCategoria ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={novaCategoriaInput}
+                    onChange={(event) => setNovaCategoriaInput(event.target.value)}
+                    placeholder="Nome da nova categoria"
+                    className="min-w-[200px] flex-1 bg-neutral-950 border-neutral-800 text-neutral-100"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-500"
+                    disabled={addCategoriaMutation.isPending || !novaCategoriaInput.trim()}
+                    onClick={() => void handleAddCategoria()}
+                  >
+                    Adicionar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-neutral-700 bg-transparent"
+                    onClick={() => {
+                      setCreatingCategoria(false)
+                      setNovaCategoriaInput('')
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.categoria || null}
+                  onValueChange={(value) => {
+                    if (value === ADD_CATEGORIA_VALUE) {
+                      setCreatingCategoria(true)
+                      return
+                    }
+                    setForm((previous) => ({ ...previous, categoria: value ?? '' }))
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                    {taxonomy?.categorias?.map((categoria: string) => (
+                      <SelectItem key={categoria} value={categoria}>
+                        {categoria}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={ADD_CATEGORIA_VALUE}>{LABEL_NOVA_CATEGORIA}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
-          </div>
-          
-          <DrawerFooter className="border-t border-neutral-800 bg-neutral-900/40 px-6 py-4">
-            <Button onClick={handleSave} disabled={patchMutation.isPending} className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium">
-              {patchMutation.isPending ? 'Salvando...' : 'Salvar Alterações'}
+
+            <div className="grid gap-2">
+              <Label className="text-neutral-400">Natureza</Label>
+              {creatingNatureza ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    value={novaNaturezaInput}
+                    onChange={(event) => setNovaNaturezaInput(event.target.value)}
+                    placeholder="Nome da nova natureza"
+                    className="min-w-[200px] flex-1 bg-neutral-950 border-neutral-800 text-neutral-100"
+                    autoFocus
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-emerald-600 hover:bg-emerald-500"
+                    disabled={addNaturezaMutation.isPending || !novaNaturezaInput.trim()}
+                    onClick={() => void handleAddNatureza()}
+                  >
+                    Adicionar
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-neutral-700 bg-transparent"
+                    onClick={() => {
+                      setCreatingNatureza(false)
+                      setNovaNaturezaInput('')
+                    }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={form.natureza || null}
+                  onValueChange={(value) => {
+                    if (value === ADD_NATUREZA_VALUE) {
+                      setCreatingNatureza(true)
+                      return
+                    }
+                    setForm((previous) => ({ ...previous, natureza: value ?? '' }))
+                  }}
+                >
+                  <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                    <SelectValue placeholder="Selecione..." />
+                  </SelectTrigger>
+                  <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                    {taxonomy?.natureza?.map((natureza: string) => (
+                      <SelectItem key={natureza} value={natureza}>
+                        {natureza}
+                      </SelectItem>
+                    ))}
+                    <SelectItem value={ADD_NATUREZA_VALUE}>{LABEL_NOVA_NATUREZA}</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-neutral-400">Recorrência</Label>
+              <Select
+                value={form.recorrencia || null}
+                onValueChange={(value) =>
+                  setForm((previous) => ({ ...previous, recorrencia: value ?? '' }))
+                }
+              >
+                <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                  {taxonomy?.recorrencia?.map((rec: string) => (
+                    <SelectItem key={rec} value={rec}>
+                      {rec}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-neutral-400">Contexto</Label>
+              <Select
+                value={form.contexto || null}
+                onValueChange={(value) =>
+                  setForm((previous) => ({ ...previous, contexto: value ?? '' }))
+                }
+              >
+                <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                  {taxonomy?.contextos?.map((contexto: string) => (
+                    <SelectItem key={contexto} value={contexto}>
+                      {contexto}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-neutral-400">Compromisso</Label>
+              <Select
+                value={form.compromisso || null}
+                onValueChange={(value) =>
+                  setForm((previous) => ({ ...previous, compromisso: value ?? '' }))
+                }
+              >
+                <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                  {COMPROMISSO_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </DialogBody>
+
+          <DialogFooter>
+            {currentPendingIndex >= 0 && (
+              <div className="flex items-center gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={goToPrev}
+                  disabled={currentPendingIndex === 0}
+                  className="flex-1 bg-transparent border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
+                </Button>
+                {showPendingOnly ? (
+                  <span className="shrink-0 text-center text-xs text-neutral-500 whitespace-nowrap px-1">
+                    {currentPendingIndex + 1} / {filteredPendingList.length} pendentes
+                  </span>
+                ) : (
+                  <span className="min-w-2 flex-1" aria-hidden />
+                )}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={goToNext}
+                  disabled={currentPendingIndex === filteredPendingList.length - 1}
+                  className="flex-1 bg-transparent border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                >
+                  Próxima <ChevronRight className="w-4 h-4 ml-1" />
+                </Button>
+              </div>
+            )}
+
+            <Button
+              type="button"
+              onClick={handleConfirmClassification}
+              disabled={confirmDisabled}
+              className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-medium"
+            >
+              {patchMutation.isPending ? 'Salvando...' : 'Confirmar Classificação'}
             </Button>
-            <DrawerClose asChild>
-              <Button variant="outline" className="mt-2 bg-transparent text-neutral-300 border-neutral-700 hover:bg-neutral-800">
-                Cancelar
-              </Button>
-            </DrawerClose>
-          </DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full bg-transparent text-neutral-300 border-neutral-700 hover:bg-neutral-800"
+              onClick={closeModal}
+            >
+              Cancelar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

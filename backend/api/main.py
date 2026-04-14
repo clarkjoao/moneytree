@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from backend.api.routes import data, upload, process, review
+from backend.api.routes import data, upload, process, review, perfil
 
 app = FastAPI(title="MoneyTree API", version="1.0.0")
 
@@ -16,6 +16,7 @@ app.include_router(data.router, prefix="/api", tags=["data"])
 app.include_router(upload.router, prefix="/api", tags=["upload"])
 app.include_router(process.router, prefix="/api", tags=["process"])
 app.include_router(review.router, prefix="/api", tags=["review"])
+app.include_router(perfil.router, prefix="/api", tags=["perfil"])
 
 @app.get("/")
 def health_check():
