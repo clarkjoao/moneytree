@@ -240,23 +240,23 @@ export default function Transactions() {
     creatingCategoria ||
     creatingNatureza
 
-  if (!monthsData?.months?.length) return <div className="p-8 text-neutral-400">Sem dados.</div>
+  if (!monthsData?.months?.length) return <div className="p-8 text-muted-foreground">Sem dados.</div>
 
   return (
     <div className="flex-1 p-6 md:p-10 space-y-6 animate-in fade-in duration-500 pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-neutral-50 mb-1">Transações</h1>
-          <p className="text-neutral-400">Verifique e corrija os metadados de cada gasto.</p>
+          <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">Transações</h1>
+          <p className="text-muted-foreground">Verifique e corrija os metadados de cada gasto.</p>
         </div>
         <Select
           value={selectedMonth || null}
           onValueChange={(value) => value && setSelectedMonth(value)}
         >
-          <SelectTrigger className="w-[180px] bg-neutral-900 border-neutral-800 text-neutral-50 font-medium">
+          <SelectTrigger className="w-[180px] bg-card border-border text-foreground font-medium">
             <SelectValue placeholder="Selecione o mês" />
           </SelectTrigger>
-          <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-50">
+          <SelectContent className="bg-card border-border text-foreground">
             {monthsData.months.map((monthKey: string) => (
               <SelectItem key={monthKey} value={monthKey}>
                 {monthKey}
@@ -273,14 +273,14 @@ export default function Transactions() {
           className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
             showPendingOnly
               ? 'bg-amber-500/10 border-amber-500/30 text-amber-400'
-              : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-700 hover:text-neutral-300'
+              : 'bg-card border-border text-muted-foreground hover:border-border hover:text-foreground/80'
           }`}
         >
           <span className="w-2 h-2 rounded-full bg-current" />
           Apenas pendentes
         </button>
 
-        <span className="text-sm text-neutral-500">
+        <span className="text-sm text-muted-foreground">
           <span className="text-amber-400 font-medium">{pendingList.length}</span> pendentes
           {' · '}
           <span className="text-emerald-400 font-medium">{confirmedCount}</span> confirmadas
@@ -291,10 +291,10 @@ export default function Transactions() {
             value={categoryFilter || null}
             onValueChange={(value) => setCategoryFilter(value ?? 'all')}
           >
-            <SelectTrigger className="w-[180px] bg-neutral-900 border-neutral-800 text-neutral-300 text-sm h-8">
+            <SelectTrigger className="w-[180px] bg-card border-border text-foreground/80 text-sm h-8">
               <SelectValue placeholder="Filtrar categoria" />
             </SelectTrigger>
-            <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+            <SelectContent className="bg-card border-border text-foreground">
               <SelectItem value="all">Todas as categorias</SelectItem>
               {taxonomy?.categorias?.map((categoria: string) => (
                 <SelectItem key={categoria} value={categoria}>
@@ -306,22 +306,22 @@ export default function Transactions() {
         </div>
       </div>
 
-      <div className="rounded-xl border border-neutral-800 overflow-hidden bg-neutral-900/30">
+      <div className="rounded-xl border border-border overflow-hidden bg-card/30">
         <Table>
-          <TableHeader className="bg-neutral-900/80 hover:bg-neutral-900/80">
-            <TableRow className="border-neutral-800">
-              <TableHead className="text-neutral-400 font-semibold w-24">Data</TableHead>
-              <TableHead className="text-neutral-400 font-semibold">Descrição</TableHead>
-              <TableHead className="text-neutral-400 font-semibold">Valor</TableHead>
-              <TableHead className="text-neutral-400 font-semibold">Categoria</TableHead>
-              <TableHead className="text-neutral-400 font-semibold hidden md:table-cell">Contexto</TableHead>
-              <TableHead className="text-neutral-400 font-semibold text-right">Status</TableHead>
+          <TableHeader className="bg-card/80 hover:bg-card/80">
+            <TableRow className="border-border">
+              <TableHead className="text-muted-foreground font-semibold w-24">Data</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">Descrição</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">Valor</TableHead>
+              <TableHead className="text-muted-foreground font-semibold">Categoria</TableHead>
+              <TableHead className="text-muted-foreground font-semibold hidden md:table-cell">Contexto</TableHead>
+              <TableHead className="text-muted-foreground font-semibold text-right">Status</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-32 text-neutral-500">
+                <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
                   Carregando...
                 </TableCell>
               </TableRow>
@@ -330,16 +330,16 @@ export default function Transactions() {
               <TableRow
                 key={tx.id}
                 onClick={() => openDrawer(tx)}
-                className="border-neutral-800 hover:bg-neutral-800/50 cursor-pointer transition-colors group"
+                className="border-border hover:bg-accent/50 cursor-pointer transition-colors group"
               >
-                <TableCell className="text-neutral-300 py-3">{formatDate(tx.data)}</TableCell>
-                <TableCell className="font-medium text-neutral-200">{tx.descricao_original}</TableCell>
+                <TableCell className="text-foreground/80 py-3">{formatDate(tx.data)}</TableCell>
+                <TableCell className="font-medium text-foreground">{tx.descricao_original}</TableCell>
                 <TableCell className={tx.tipo === 'debito' ? 'text-red-400' : 'text-emerald-400'}>
                   {tx.tipo === 'debito' ? '-' : ''}
                   {BRL.format(tx.valor)}
                 </TableCell>
-                <TableCell className="text-neutral-400">{tx.classificacao.categoria || '-'}</TableCell>
-                <TableCell className="text-neutral-400 hidden md:table-cell">
+                <TableCell className="text-muted-foreground">{tx.classificacao.categoria || '-'}</TableCell>
+                <TableCell className="text-muted-foreground hidden md:table-cell">
                   {tx.classificacao.contexto || '-'}
                 </TableCell>
                 <TableCell className="text-right">
@@ -358,7 +358,7 @@ export default function Transactions() {
             ))}
             {filteredTransactions.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={6} className="text-center h-32 text-neutral-500">
+                <TableCell colSpan={6} className="text-center h-32 text-muted-foreground">
                   {showPendingOnly ? 'Nenhuma transação pendente' : 'Nenhuma transação encontrada'}
                 </TableCell>
               </TableRow>
@@ -387,7 +387,7 @@ export default function Transactions() {
                   {selectedTx ? `${selectedTx.tipo === 'debito' ? '-' : ''}${BRL.format(selectedTx.valor)}` : ''}
                 </span>
               </div>
-              <div className="flex flex-col gap-1 text-xs text-neutral-500">
+              <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                 <span>{selectedTx ? formatMeio(selectedTx.meio) : ''}</span>
                 {selectedTx?.parcela_info ? (
                   <span>
@@ -400,14 +400,14 @@ export default function Transactions() {
 
           <DialogBody className="space-y-5">
             <div className="grid gap-2">
-              <Label className="text-neutral-400">Categoria</Label>
+              <Label className="text-muted-foreground">Categoria</Label>
               {creatingCategoria ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     value={novaCategoriaInput}
                     onChange={(event) => setNovaCategoriaInput(event.target.value)}
                     placeholder="Nome da nova categoria"
-                    className="min-w-[200px] flex-1 bg-neutral-950 border-neutral-800 text-neutral-100"
+                    className="min-w-[200px] flex-1 bg-background border-border text-foreground"
                     autoFocus
                   />
                   <Button
@@ -423,7 +423,7 @@ export default function Transactions() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-neutral-700 bg-transparent"
+                    className="border-border bg-transparent"
                     onClick={() => {
                       setCreatingCategoria(false)
                       setNovaCategoriaInput('')
@@ -443,10 +443,10 @@ export default function Transactions() {
                     setForm((previous) => ({ ...previous, categoria: value ?? '' }))
                   }}
                 >
-                  <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                  <SelectTrigger className="w-full bg-background border-border text-foreground">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                  <SelectContent className="bg-card border-border text-foreground">
                     {taxonomy?.categorias?.map((categoria: string) => (
                       <SelectItem key={categoria} value={categoria}>
                         {categoria}
@@ -459,14 +459,14 @@ export default function Transactions() {
             </div>
 
             <div className="grid gap-2">
-              <Label className="text-neutral-400">Natureza</Label>
+              <Label className="text-muted-foreground">Natureza</Label>
               {creatingNatureza ? (
                 <div className="flex flex-wrap items-center gap-2">
                   <Input
                     value={novaNaturezaInput}
                     onChange={(event) => setNovaNaturezaInput(event.target.value)}
                     placeholder="Nome da nova natureza"
-                    className="min-w-[200px] flex-1 bg-neutral-950 border-neutral-800 text-neutral-100"
+                    className="min-w-[200px] flex-1 bg-background border-border text-foreground"
                     autoFocus
                   />
                   <Button
@@ -482,7 +482,7 @@ export default function Transactions() {
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="border-neutral-700 bg-transparent"
+                    className="border-border bg-transparent"
                     onClick={() => {
                       setCreatingNatureza(false)
                       setNovaNaturezaInput('')
@@ -502,10 +502,10 @@ export default function Transactions() {
                     setForm((previous) => ({ ...previous, natureza: value ?? '' }))
                   }}
                 >
-                  <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                  <SelectTrigger className="w-full bg-background border-border text-foreground">
                     <SelectValue placeholder="Selecione..." />
                   </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                  <SelectContent className="bg-card border-border text-foreground">
                     {taxonomy?.natureza?.map((natureza: string) => (
                       <SelectItem key={natureza} value={natureza}>
                         {natureza}
@@ -518,17 +518,17 @@ export default function Transactions() {
             </div>
 
             <div className="grid gap-2">
-              <Label className="text-neutral-400">Recorrência</Label>
+              <Label className="text-muted-foreground">Recorrência</Label>
               <Select
                 value={form.recorrencia || null}
                 onValueChange={(value) =>
                   setForm((previous) => ({ ...previous, recorrencia: value ?? '' }))
                 }
               >
-                <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                <SelectTrigger className="w-full bg-background border-border text-foreground">
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
-                <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                <SelectContent className="bg-card border-border text-foreground">
                   {taxonomy?.recorrencia?.map((rec: string) => (
                     <SelectItem key={rec} value={rec}>
                       {rec}
@@ -539,17 +539,17 @@ export default function Transactions() {
             </div>
 
             <div className="grid gap-2">
-              <Label className="text-neutral-400">Contexto</Label>
+              <Label className="text-muted-foreground">Contexto</Label>
               <Select
                 value={form.contexto || null}
                 onValueChange={(value) =>
                   setForm((previous) => ({ ...previous, contexto: value ?? '' }))
                 }
               >
-                <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                <SelectTrigger className="w-full bg-background border-border text-foreground">
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
-                <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                <SelectContent className="bg-card border-border text-foreground">
                   {taxonomy?.contextos?.map((contexto: string) => (
                     <SelectItem key={contexto} value={contexto}>
                       {contexto}
@@ -560,17 +560,17 @@ export default function Transactions() {
             </div>
 
             <div className="grid gap-2">
-              <Label className="text-neutral-400">Compromisso</Label>
+              <Label className="text-muted-foreground">Compromisso</Label>
               <Select
                 value={form.compromisso || null}
                 onValueChange={(value) =>
                   setForm((previous) => ({ ...previous, compromisso: value ?? '' }))
                 }
               >
-                <SelectTrigger className="w-full bg-neutral-950 border-neutral-800 text-neutral-100">
+                <SelectTrigger className="w-full bg-background border-border text-foreground">
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
-                <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
+                <SelectContent className="bg-card border-border text-foreground">
                   {COMPROMISSO_OPTIONS.map((option) => (
                     <SelectItem key={option.value} value={option.value}>
                       {option.label}
@@ -590,12 +590,12 @@ export default function Transactions() {
                   size="sm"
                   onClick={goToPrev}
                   disabled={currentPendingIndex === 0}
-                  className="flex-1 bg-transparent border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                  className="flex-1 bg-transparent border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   <ChevronLeft className="w-4 h-4 mr-1" /> Anterior
                 </Button>
                 {showPendingOnly ? (
-                  <span className="shrink-0 text-center text-xs text-neutral-500 whitespace-nowrap px-1">
+                  <span className="shrink-0 text-center text-xs text-muted-foreground whitespace-nowrap px-1">
                     {currentPendingIndex + 1} / {filteredPendingList.length} pendentes
                   </span>
                 ) : (
@@ -607,7 +607,7 @@ export default function Transactions() {
                   size="sm"
                   onClick={goToNext}
                   disabled={currentPendingIndex === filteredPendingList.length - 1}
-                  className="flex-1 bg-transparent border-neutral-700 text-neutral-400 hover:bg-neutral-800 hover:text-neutral-200"
+                  className="flex-1 bg-transparent border-border text-muted-foreground hover:bg-muted hover:text-foreground"
                 >
                   Próxima <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
@@ -626,7 +626,7 @@ export default function Transactions() {
             <Button
               type="button"
               variant="outline"
-              className="w-full bg-transparent text-neutral-300 border-neutral-700 hover:bg-neutral-800"
+              className="w-full bg-transparent text-foreground/80 border-border hover:bg-muted"
               onClick={closeModal}
             >
               Cancelar

@@ -10,6 +10,7 @@ from pathlib import Path
 from backend.analyzer.anomaly import detect_anomalies
 from backend.analyzer.metrics import compute_month
 from backend.analyzer.report import print_metrics_tabular, write_month_report
+from backend.classifier.llm_client import LLMClient
 from backend.classifier.pipeline import run_classify_month
 from backend.classifier.review import apply_review_csv, open_csv_for_editing, write_review_csv
 from backend.models.transaction import Transaction
@@ -125,8 +126,20 @@ def parse_command(input_dir: Path, use_fallback: bool) -> int:
     return 0
 
 
-def classify_command(month_key: str, config_dir: Path, use_llm: bool) -> int:
-    stats = run_classify_month(ROOT, month_key, config_dir, use_llm=use_llm)
+def classify_command(
+    month_key: str,
+    config_dir: Path,
+    use_llm: bool,
+    llm_client: LLMClient | None = None,
+) -> int:
+    client: LLMClient | None = llm_client
+    if use_llm and client is None:
+        from backend.classifier.llm_config import build_llm_client_from_config
+
+        client = build_llm_client_from_config()
+    if not use_llm:
+        client = None
+    stats = run_classify_month(ROOT, month_key, config_dir, use_llm=use_llm, llm_client=client)
     logger.info("Total transações: %s", stats["total"])
     logger.info("Classificadas por regra: %s", stats["por_regra"])
     logger.info("Contexto atualizado em: %s", stats["contexto_touch"])

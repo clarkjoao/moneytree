@@ -1,26 +1,28 @@
 {
   "contexto_padrao": "Rotina Campinas",
   "cidades_contexto": {
-    "SAO PAULO": "Trabalho SP",
-    "SÃO PAULO": "Trabalho SP",
-    "MACEIO": "Viagem",
-    "MACEIÓ": "Viagem"
+    "SAO PAULO": "Trabalho SP"
   },
-  "estabelecimentos_ancora": [
-    { "padrao": "LATAM", "contexto": "Viagem" },
-    { "padrao": "GOL LINHAS", "contexto": "Viagem" },
-    { "padrao": "HOTEL", "contexto": "Viagem" },
-    { "padrao": "AIRBNB", "contexto": "Viagem" }
-  ],
+  "estabelecimentos_ancora": [],
   "contas_proprias": [
     "exemplo.pix.usuario@email.com",
     "00000000000"
   ],
   "pessoas_conhecidas": {
-    "Maria Silva": {
+    "PIX TRANSF WILLIAM": {
       "categoria": "Transferência",
-      "natureza": "Transferência",
-      "recorrencia": "Pontual"
+      "natureza": "Essencial",
+      "recorrencia": "Variável recorrente"
+    },
+    "PIX TRANSF FERNAND": {
+      "categoria": "Saúde",
+      "natureza": "Essencial",
+      "recorrencia": "Fixa"
+    },
+    "PIX TRANSF VALDEMI": {
+      "categoria": "Moradia",
+      "natureza": "Essencial",
+      "recorrencia": "Fixa"
     }
   },
   "viagens": [
@@ -28,11 +30,6 @@
       "destino": "São Paulo",
       "motivo": "Trabalho presencial",
       "frequencia": "Mensal"
-    },
-    {
-      "destino": "Lisboa",
-      "motivo": "Férias",
-      "frequencia": "Anual"
     }
   ]
 }

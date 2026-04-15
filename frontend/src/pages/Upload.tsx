@@ -4,6 +4,7 @@ import {
   AlertCircle,
   CheckCircle2,
   ChevronRight,
+  Circle,
   File,
   Loader2,
   Play,
@@ -14,95 +15,130 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   uploadFiles,
   processMonth,
+  startUploadPipeline,
   checkProcessStatus,
   fetchMonths,
-  fetchParseStatus,
+  type UploadBank,
+  type JobStatusPayload,
+  type JobStepPayload,
 } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 
-type Step = 'IDLE' | 'UPLOADING' | 'PARSING' | 'READY' | 'PROCESSING' | 'DONE' | 'ERROR'
+type Step = 'IDLE' | 'UPLOADING' | 'PROCESSING' | 'DONE' | 'ERROR'
+const LAST_UPLOAD_BANK_KEY = 'moneytree.last-upload-bank'
+const UPLOAD_BANK_OPTIONS: Array<{ id: UploadBank; label: string }> = [
+  { id: 'itau', label: 'Itaú' },
+]
 
-const STEP_LABELS: Record<string, string> = {
-  classify: 'Classificando transações...',
-  analyze: 'Calculando métricas...',
-  done: 'Concluído',
+function getInitialUploadBank(): UploadBank {
+  const stored = localStorage.getItem(LAST_UPLOAD_BANK_KEY)
+  return stored === 'itau' ? 'itau' : 'itau'
+}
+
+function toUploadBank(value: string | null): UploadBank {
+  return value === 'itau' ? 'itau' : 'itau'
+}
+
+function StepRow({ step }: { step: JobStepPayload }) {
+  const done = step.status === 'done'
+  const running = step.status === 'running'
+  const err = step.status === 'error'
+  return (
+    <div className="space-y-0.5">
+      <div
+        className={`flex items-start gap-2 text-sm ${
+          err ? 'text-red-400' : done ? 'text-emerald-400' : running ? 'text-amber-400' : 'text-muted-foreground'
+        }`}
+      >
+        {done ? (
+          <CheckCircle2 className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        ) : running ? (
+          <Loader2 className="w-3.5 h-3.5 shrink-0 mt-0.5 animate-spin" />
+        ) : err ? (
+          <AlertCircle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+        ) : (
+          <Circle className="w-3.5 h-3.5 shrink-0 mt-0.5 opacity-40" />
+        )}
+        <span className="font-medium">{step.label}</span>
+      </div>
+      {step.detail ? (
+        <p className="pl-6 text-xs text-muted-foreground">{step.detail}</p>
+      ) : null}
+      {step.error ? (
+        <p className="pl-6 text-xs text-red-400/90">{step.error}</p>
+      ) : null}
+      {step.status === 'pending' && !step.detail ? (
+        <p className="pl-6 text-xs text-muted-foreground/80">Aguardando…</p>
+      ) : null}
+    </div>
+  )
 }
 
 export default function Upload() {
   const queryClient = useQueryClient()
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const completedJobRef = useRef<string | null>(null)
   const [dragActive, setDragActive] = useState(false)
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null)
 
   const [step, setStep] = useState<Step>('IDLE')
   const [detectedMes, setDetectedMes] = useState<string | null>(null)
   const [selectedMonth, setSelectedMonth] = useState<string>('')
+  const [uploadMes, setUploadMes] = useState<string>('')
+  const [uploadBank, setUploadBank] = useState<UploadBank>(getInitialUploadBank)
   const [processJobId, setProcessJobId] = useState<string | null>(null)
   const [errorMessage, setErrorMessage] = useState<string>('')
 
-  // Months for manual fallback select in READY
+  useEffect(() => {
+    localStorage.setItem(LAST_UPLOAD_BANK_KEY, uploadBank)
+  }, [uploadBank])
+
   const { data: monthsData } = useQuery({
     queryKey: ['months'],
     queryFn: fetchMonths,
   })
 
-  // Poll parse status (PARSING step)
-  const { data: parseStatus } = useQuery({
-    queryKey: ['parse-status', detectedMes],
-    queryFn: () => fetchParseStatus(detectedMes!),
-    enabled: step === 'PARSING' && !!detectedMes,
-    refetchInterval: (query: any) => {
-      if (step !== 'PARSING') return false
-      return query.state?.data?.ready ? false : 2000
-    },
-  })
-
-  useEffect(() => {
-    if (parseStatus?.ready && step === 'PARSING') {
-      setStep('READY')
-      setSelectedMonth(detectedMes!)
-    }
-  }, [parseStatus?.ready, step, detectedMes])
-
-  // Poll job status (PROCESSING step)
   const { data: jobStatus } = useQuery({
     queryKey: ['job', processJobId],
     queryFn: () => checkProcessStatus(processJobId!),
     enabled: step === 'PROCESSING' && !!processJobId,
-    refetchInterval: (query: any) => {
-      const status = query.state?.data?.status
+    refetchInterval: (query) => {
+      const status = (query.state?.data as JobStatusPayload | undefined)?.status
       return status === 'done' || status === 'error' ? false : 2000
     },
   })
 
   useEffect(() => {
-    if (!jobStatus || step !== 'PROCESSING') return
-    if (jobStatus.status === 'done') {
-      queryClient.invalidateQueries({ queryKey: ['months'] })
-      queryClient.invalidateQueries({ queryKey: ['transactions', selectedMonth] })
-      queryClient.invalidateQueries({ queryKey: ['metrics', selectedMonth] })
-      setStep('DONE')
-    } else if (jobStatus.status === 'error') {
-      setErrorMessage(jobStatus.message || 'Erro no processamento')
-      setStep('ERROR')
-    }
-  }, [jobStatus?.status, step, selectedMonth, queryClient])
+    if (!jobStatus || step !== 'PROCESSING' || jobStatus.status !== 'done') return
+    if (completedJobRef.current === jobStatus.id) return
+    completedJobRef.current = jobStatus.id
 
-  // Upload mutation
-  const uploadMutation = useMutation({
-    mutationFn: (files: FileList) => uploadFiles(files),
+    const mes =
+      jobStatus.mes && jobStatus.mes !== 'detectando...' ? jobStatus.mes : selectedMonth || detectedMes || ''
+    queryClient.invalidateQueries({ queryKey: ['months'] })
+    if (mes) {
+      queryClient.invalidateQueries({ queryKey: ['transactions', mes] })
+      queryClient.invalidateQueries({ queryKey: ['metrics', mes] })
+    }
+  }, [jobStatus, step, selectedMonth, detectedMes, queryClient])
+
+  const uploadAndPipelineMutation = useMutation({
+    mutationFn: async ({ files, mes, bank }: { files: FileList; mes: string; bank: UploadBank }) => {
+      const uploadResult = await uploadFiles(files, { mes, bank })
+      const pipelineResult = await startUploadPipeline(true)
+      return { uploadResult, pipelineResult }
+    },
     onMutate: () => setStep('UPLOADING'),
-    onSuccess: (data) => {
-      setDetectedMes(data.mes ?? null)
+    onSuccess: ({ uploadResult, pipelineResult }) => {
+      completedJobRef.current = null
+      setDetectedMes(uploadResult.mes ?? null)
       setSelectedFiles(null)
-      if (data.mes) {
-        setStep('PARSING')
-      } else {
-        setStep('READY')
-      }
+      setSelectedMonth(uploadResult.mes ?? uploadMes)
+      setProcessJobId(pipelineResult.job_id)
+      setStep('PROCESSING')
     },
     onError: (err: Error) => {
       setErrorMessage(err.message)
@@ -110,11 +146,12 @@ export default function Upload() {
     },
   })
 
-  // Process mutation
-  const startProcessMutation = useMutation({
-    mutationFn: (mes: string) => processMonth(mes),
+  const classifyOnlyMutation = useMutation({
+    mutationFn: (mes: string) => processMonth(mes, true),
     onSuccess: (data) => {
+      completedJobRef.current = null
       setProcessJobId(data.job_id)
+      setSelectedMonth(data.mes ?? '')
       setStep('PROCESSING')
     },
     onError: (err: Error) => {
@@ -142,224 +179,263 @@ export default function Upload() {
   }
 
   const reset = () => {
+    completedJobRef.current = null
     setStep('IDLE')
     setDetectedMes(null)
     setSelectedMonth('')
+    setUploadMes('')
     setProcessJobId(null)
     setErrorMessage('')
     setSelectedFiles(null)
   }
 
-  const effectiveMes = selectedMonth || detectedMes || ''
+  const displayMesWhileRunning =
+    jobStatus?.mes && jobStatus.mes !== 'detectando...'
+      ? jobStatus.mes
+      : selectedMonth || detectedMes || ''
+
+  const uiStep: Step =
+    step === 'PROCESSING' && jobStatus?.status === 'done'
+      ? 'DONE'
+      : step === 'PROCESSING' && jobStatus?.status === 'error'
+        ? 'ERROR'
+        : step
+  const effectiveErrorMessage =
+    step === 'PROCESSING' && jobStatus?.status === 'error'
+      ? (jobStatus.error || 'Erro no processamento')
+      : errorMessage
+  const successMes = displayMesWhileRunning
+  const canStartUpload = Boolean(selectedFiles && uploadMes && uploadBank)
 
   return (
     <div className="flex-1 p-6 md:p-10 space-y-8 animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-50 mb-1">Upload & Processamento</h1>
-        <p className="text-neutral-400">Arraste faturas em PDF e rode o pipeline de classificação.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-1">Upload & Processamento</h1>
+        <p className="text-muted-foreground">Envie PDFs e rode o pipeline completo (extração, classificação e métricas).</p>
       </div>
 
-      {/* Step indicator */}
-      <div className="flex items-center gap-2 text-sm">
-        {(['IDLE', 'UPLOADING', 'PARSING', 'READY', 'PROCESSING', 'DONE'] as Step[]).map((s, i, arr) => (
+      <div className="flex items-center gap-2 text-sm flex-wrap">
+        {(['IDLE', 'UPLOADING', 'PROCESSING', 'DONE'] as Step[]).map((s, i, arr) => (
           <div key={s} className="flex items-center gap-2">
-            <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-              step === s ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-              : (arr.indexOf(step) > i || step === 'DONE') ? 'text-neutral-600'
-              : 'text-neutral-700'
-            }`}>
+            <span
+              className={`px-2 py-0.5 rounded text-xs font-medium ${
+                uiStep === s
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                  : arr.indexOf(uiStep) > i || uiStep === 'DONE'
+                    ? 'text-muted-foreground'
+                    : 'text-foreground/45'
+              }`}
+            >
               {s}
             </span>
-            {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-neutral-700" />}
+            {i < arr.length - 1 && <ChevronRight className="w-3 h-3 text-muted-foreground" />}
           </div>
         ))}
-        {step === 'ERROR' && (
-          <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10">ERRO</Badge>
+        {uiStep === 'ERROR' && (
+          <Badge variant="outline" className="border-red-500/30 text-red-400 bg-red-500/10">
+            ERRO
+          </Badge>
         )}
       </div>
 
-      {/* ERROR */}
-      {step === 'ERROR' && (
-        <Card className="bg-neutral-900 border-red-500/30">
+      {uiStep === 'ERROR' && (
+        <Card className="bg-card border-red-500/30">
           <CardContent className="p-6 flex flex-col gap-4">
             <div className="flex items-start gap-3">
               <AlertCircle className="w-5 h-5 text-red-400 mt-0.5 shrink-0" />
               <div>
                 <p className="font-medium text-red-300 mb-1">Ocorreu um erro</p>
-                <p className="text-sm text-neutral-400">{errorMessage}</p>
+                <p className="text-sm text-muted-foreground">{effectiveErrorMessage}</p>
               </div>
             </div>
-            <Button variant="outline" onClick={reset} className="w-fit border-neutral-700 text-neutral-300 hover:bg-neutral-800">
+            <Button
+              variant="outline"
+              onClick={reset}
+              className="w-fit border-border text-foreground/80 hover:bg-muted"
+            >
               <RotateCcw className="w-4 h-4 mr-2" /> Tentar novamente
             </Button>
           </CardContent>
         </Card>
       )}
 
-      {/* IDLE / UPLOADING */}
-      {(step === 'IDLE' || step === 'UPLOADING') && (
-        <Card className="bg-neutral-900 border-neutral-800">
+      {(uiStep === 'IDLE' || uiStep === 'UPLOADING') && (
+        <Card className="bg-card border-border">
           <CardHeader>
-            <CardTitle className="text-emerald-400">1. Upload de Fatura</CardTitle>
-            <CardDescription className="text-neutral-500">PDFs da Nubank, C6, Itaú, etc.</CardDescription>
+            <CardTitle className="text-emerald-400">1. Upload de faturas</CardTitle>
+            <CardDescription className="text-muted-foreground">
+              Os PDFs são salvos em <span className="font-mono text-foreground/70">data/raw</span>. Em seguida o pipeline
+              completo é iniciado automaticamente.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <form
               onDragEnter={handleDrag}
               onDragLeave={handleDrag}
               onDragOver={handleDrag}
               onDrop={handleDrop}
               className={`border-2 border-dashed rounded-xl p-8 flex flex-col items-center justify-center text-center transition-colors ${
-                dragActive ? 'border-emerald-500 bg-emerald-500/10' : 'border-neutral-800 bg-neutral-950/50 hover:border-neutral-700'
+                dragActive ? 'border-emerald-500 bg-emerald-500/10' : 'border-border bg-background/50 hover:border-border'
               }`}
               style={{ minHeight: '200px' }}
             >
-              <input ref={fileInputRef} type="file" multiple accept="application/pdf" onChange={handleChange} className="hidden" />
-              <UploadCloud className="w-10 h-10 text-neutral-500 mb-4" />
-              <p className="text-neutral-300 font-medium mb-1">Arraste seus PDFs aqui</p>
-              <p className="text-sm text-neutral-500 mb-4">ou clique para selecionar arquivos</p>
-              <Button type="button" variant="outline" onClick={() => fileInputRef.current?.click()} className="bg-neutral-900 border-neutral-700 hover:bg-neutral-800 text-neutral-300">
-                Selecionar Arquivos
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                accept="application/pdf"
+                onChange={handleChange}
+                className="hidden"
+              />
+              <UploadCloud className="w-10 h-10 text-muted-foreground mb-4" />
+              <p className="text-foreground/80 font-medium mb-1">Arraste seus PDFs aqui</p>
+              <p className="text-sm text-muted-foreground mb-4">ou clique para selecionar arquivos</p>
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => fileInputRef.current?.click()}
+                className="bg-card border-border hover:bg-muted text-foreground/80"
+              >
+                Selecionar arquivos
               </Button>
             </form>
 
             {selectedFiles && Array.from(selectedFiles).length > 0 && (
-              <div className="bg-neutral-950 border border-neutral-800 rounded-lg p-3 space-y-2">
-                <div className="text-xs font-semibold text-neutral-500 uppercase tracking-wider">Arquivos selecionados</div>
+              <div className="bg-background border border-border rounded-lg p-3 space-y-2">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Arquivos selecionados</div>
                 {Array.from(selectedFiles).map((file, i) => (
-                  <div key={i} className="flex items-center gap-2 text-sm text-neutral-300">
+                  <div key={i} className="flex items-center gap-2 text-sm text-foreground/80">
                     <File className="w-4 h-4 text-emerald-500" />
                     <span className="truncate">{file.name}</span>
                   </div>
                 ))}
+                <div className="pt-2 space-y-1">
+                  <label className="text-xs font-medium text-foreground/80">Banco (obrigatório)</label>
+                  <Select value={uploadBank} onValueChange={(value) => setUploadBank(toUploadBank(value))}>
+                    <SelectTrigger className="bg-background border-border">
+                      <SelectValue placeholder="Selecione o banco" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border text-foreground">
+                      {UPLOAD_BANK_OPTIONS.map((bankOption) => (
+                        <SelectItem key={bankOption.id} value={bankOption.id}>
+                          {bankOption.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="pt-2 space-y-1">
+                  <label className="text-xs font-medium text-foreground/80">Mês da fatura (obrigatório)</label>
+                  <input
+                    type="month"
+                    value={uploadMes}
+                    onChange={(event) => setUploadMes(event.target.value)}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:ring-2 focus:ring-emerald-500/30"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    O mês selecionado é usado para nomear os arquivos no upload e evitar falhas de detecção.
+                  </p>
+                </div>
                 <Button
                   className="w-full mt-4 bg-emerald-600 hover:bg-emerald-500 text-white"
-                  onClick={() => uploadMutation.mutate(selectedFiles!)}
-                  disabled={step === 'UPLOADING'}
+                  onClick={() => uploadAndPipelineMutation.mutate({ files: selectedFiles!, mes: uploadMes, bank: uploadBank })}
+                  disabled={uiStep === 'UPLOADING' || !canStartUpload}
                 >
-                  {step === 'UPLOADING' ? (
-                    <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando...</>
+                  {uiStep === 'UPLOADING' ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Enviando e iniciando pipeline…
+                    </>
                   ) : (
-                    <><UploadCloud className="w-4 h-4 mr-2" /> Fazer Upload e Extrair</>
+                    <>
+                      <UploadCloud className="w-4 h-4 mr-2" /> Enviar e processar
+                    </>
                   )}
                 </Button>
               </div>
             )}
-          </CardContent>
-        </Card>
-      )}
 
-      {/* PARSING */}
-      {step === 'PARSING' && (
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardContent className="p-8 flex flex-col items-center gap-4">
-            <Loader2 className="w-10 h-10 text-emerald-500 animate-spin" />
-            <div className="text-center">
-              <p className="font-medium text-neutral-200">Extraindo transações...</p>
-              <p className="text-sm text-neutral-500 mt-1">
-                Aguardando parse do PDF{detectedMes ? ` · ${detectedMes}` : ''}
+            <div className="border-t border-border pt-6 space-y-3">
+              <h3 className="text-sm font-semibold text-foreground/90">Só classificar e analisar</h3>
+              <p className="text-xs text-muted-foreground">
+                Para um mês que já tem <span className="font-mono">fatura.json</span> ou{' '}
+                <span className="font-mono">extrato.json</span> em <span className="font-mono">data/processed</span>.
               </p>
+              <div className="flex flex-col sm:flex-row gap-3 sm:items-end">
+                <div className="flex-1 space-y-2">
+                  <label className="text-xs font-medium text-foreground/80">Mês</label>
+                  <Select
+                    value={selectedMonth}
+                    onValueChange={(value) => value && setSelectedMonth(value)}
+                  >
+                    <SelectTrigger className="bg-background border-border">
+                      <SelectValue placeholder="Escolha o mês" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-card border-border text-foreground">
+                      {monthsData?.months?.map((m: string) => (
+                        <SelectItem key={m} value={m}>
+                          {m}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-border shrink-0"
+                  disabled={!selectedMonth || classifyOnlyMutation.isPending}
+                  onClick={() => selectedMonth && classifyOnlyMutation.mutate(selectedMonth)}
+                >
+                  {classifyOnlyMutation.isPending ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Play className="w-4 h-4 mr-2" />
+                  )}
+                  Rodar pipeline
+                </Button>
+              </div>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* READY */}
-      {step === 'READY' && (
-        <Card className="bg-neutral-900 border-neutral-800">
-          <CardHeader>
-            <CardTitle className="text-emerald-400">2. Rodar Pipeline</CardTitle>
-            <CardDescription className="text-neutral-500">Classificação com LLM, regras e métricas</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {detectedMes ? (
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                <div>
-                  <p className="text-sm font-medium text-emerald-300">Mês detectado automaticamente</p>
-                  <p className="text-xs text-emerald-500/70 mt-0.5">{detectedMes}</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-neutral-300">Selecione o mês</label>
-                <Select
-                  value={selectedMonth || null}
-                  onValueChange={(value) => value && setSelectedMonth(value)}
-                >
-                  <SelectTrigger className="bg-neutral-950 border-neutral-800">
-                    <SelectValue placeholder="Escolha um mês para rodar" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-neutral-900 border-neutral-800 text-neutral-100">
-                    {monthsData?.months?.map((m: string) => (
-                      <SelectItem key={m} value={m}>{m}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
-            <Button
-              className="w-full bg-emerald-600 hover:bg-emerald-500"
-              disabled={!effectiveMes || startProcessMutation.isPending}
-              onClick={() => startProcessMutation.mutate(effectiveMes)}
-            >
-              <Play className="w-4 h-4 mr-2" /> Rodar Pipeline
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* PROCESSING */}
-      {step === 'PROCESSING' && (
-        <Card className="bg-neutral-900 border-neutral-800">
+      {uiStep === 'PROCESSING' && (
+        <Card className="bg-card border-border">
           <CardContent className="p-6 space-y-4">
             <div className="flex items-center gap-3">
               <Loader2 className="w-5 h-5 text-amber-500 animate-spin shrink-0" />
-              <span className="font-medium text-neutral-200">Processando {effectiveMes}...</span>
+              <span className="font-medium text-foreground">
+                Processando{displayMesWhileRunning ? ` · ${displayMesWhileRunning}` : ''}…
+              </span>
             </div>
-            <div className="space-y-2 pl-8">
-              {(['classify', 'analyze'] as const).map((s) => {
-                const done = jobStatus?.steps_done?.includes(s)
-                const active = jobStatus?.step === s
-                return (
-                  <div key={s} className={`flex items-center gap-2 text-sm transition-colors ${
-                    done ? 'text-emerald-400' : active ? 'text-amber-400' : 'text-neutral-600'
-                  }`}>
-                    {done ? (
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                    ) : active ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <div className="w-3.5 h-3.5 rounded-full border border-neutral-700" />
-                    )}
-                    {STEP_LABELS[s]}
-                  </div>
-                )
-              })}
+            <div className="space-y-4 pl-1 border-l border-border ml-2 pl-4">
+              {(jobStatus?.steps ?? []).map((s) => (
+                <StepRow key={s.name} step={s} />
+              ))}
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* DONE */}
-      {step === 'DONE' && (
-        <Card className="bg-neutral-900 border-emerald-500/20">
+      {uiStep === 'DONE' && (
+        <Card className="bg-card border-emerald-500/20">
           <CardContent className="p-8 flex flex-col items-center gap-5 text-center">
             <CheckCircle2 className="w-12 h-12 text-emerald-400" />
             <div>
-              <p className="text-xl font-semibold text-neutral-100">Pipeline concluído!</p>
-              <p className="text-sm text-neutral-400 mt-1">
-                Mês <span className="text-emerald-400 font-mono">{effectiveMes}</span> processado com sucesso.
+              <p className="text-xl font-semibold text-foreground">Pipeline concluído</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                Mês{' '}
+                <span className="text-emerald-400 font-mono">{successMes || '—'}</span> processado com sucesso.
               </p>
             </div>
-            <div className="flex gap-3">
-              <Link to={`/transacoes`}>
+            <div className="flex gap-3 flex-wrap justify-center">
+              <Link to="/transacoes">
                 <Button className="bg-emerald-600 hover:bg-emerald-500">
-                  Ver Transações <ChevronRight className="w-4 h-4 ml-1" />
+                  Ver transações <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </Link>
-              <Button variant="outline" onClick={reset} className="border-neutral-700 text-neutral-300 hover:bg-neutral-800">
-                <RotateCcw className="w-4 h-4 mr-2" /> Novo Upload
+              <Button variant="outline" onClick={reset} className="border-border text-foreground/80 hover:bg-muted">
+                <RotateCcw className="w-4 h-4 mr-2" /> Novo upload
               </Button>
             </div>
           </CardContent>

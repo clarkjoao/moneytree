@@ -39,7 +39,10 @@ def _first_page_text_upper(pdf_path: Path) -> str:
 def _filename_itau_fatura(name_upper: str) -> bool:
     if name_upper.startswith("FATURA_MASTERCARD"):
         return True
-    return "FATURA" in name_upper and "MASTERCARD" in name_upper
+    if "FATURA" not in name_upper:
+        return False
+    # Aceita nome legado sem "MASTERCARD", ex: "Fatura_Itau_20260414-212309.pdf"
+    return "MASTERCARD" in name_upper or "ITAU" in name_upper or "ITAÚ" in name_upper
 
 
 def _filename_itau_extrato(name_upper: str) -> bool:

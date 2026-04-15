@@ -1,36 +1,83 @@
+from __future__ import annotations
+
+import threading
+import time
 from pathlib import Path
 
-from fastapi import APIRouter, BackgroundTasks, HTTPException
+from fastapi import APIRouter, HTTPException
+from pydantic import BaseModel
 
-from backend.cli import analyze_command, classify_command
+from backend.pipeline.jobs import job_store
+from backend.pipeline.orchestrator import (
+    CLASSIFY_ONLY_STEPS,
+    PIPELINE_STEPS,
+    run_classify_pipeline,
+    run_full_pipeline,
+)
 
 router = APIRouter()
-ROOT = Path(__file__).resolve().parents[2]
 
-process_jobs = {}
 
-def bg_process(job_id: str, mes: str):
-    try:
-        process_jobs[job_id] = {"status": "running", "step": "classify", "steps_done": []}
-        classify_command(mes, ROOT / "config", use_llm=True)
-        process_jobs[job_id] = {"status": "running", "step": "analyze", "steps_done": ["classify"]}
-        analyze_command(mes, only_metrics=False)
-        process_jobs[job_id] = {"status": "done", "step": "done", "steps_done": ["classify", "analyze"]}
-    except Exception as e:
-        process_jobs[job_id] = {"status": "error", "message": str(e), "steps_done": process_jobs.get(job_id, {}).get("steps_done", [])}
+class ProcessRequest(BaseModel):
+    use_llm: bool = True
 
-@router.post("/process/{mes}")
-async def start_process(mes: str, background_tasks: BackgroundTasks):
-    job_id = f"job_process_{mes}"
-    if process_jobs.get(job_id, {}).get("status") == "running":
-        return {"job_id": job_id, "status": "already_running"}
-        
-    process_jobs[job_id] = {"status": "pending"}
-    background_tasks.add_task(bg_process, job_id, mes)
+
+@router.post("/process/upload")
+def start_upload_pipeline(body: ProcessRequest) -> dict:
+    """
+    Inicia o pipeline completo: parse + classify + analyze.
+    Usado pelo fluxo de upload quando o frontend quer processar tudo de uma vez.
+    """
+    job_id = f"upload_{int(time.time())}"
+    job_store.create(job_id, mes="detectando...", steps=PIPELINE_STEPS)
+
+    thread = threading.Thread(
+        target=run_full_pipeline,
+        args=(job_id,),
+        kwargs={"use_llm": body.use_llm},
+        daemon=True,
+    )
+    thread.start()
+
     return {"job_id": job_id, "status": "started"}
 
+
+@router.post("/process/{mes}")
+def start_classify_pipeline(mes: str, body: ProcessRequest) -> dict:
+    """
+    Inicia classify + analyze para um mês já parseado.
+    Usado quando os JSONs já existem e o usuário quer re-classificar ou rodar o pipeline.
+    """
+    processed_root = Path(__file__).resolve().parents[2] / "data" / "processed"
+    month_dir = processed_root / mes
+    if not (month_dir / "fatura.json").exists() and not (month_dir / "extrato.json").exists():
+        raise HTTPException(
+            status_code=404,
+            detail=f"Nenhum dado encontrado para {mes}. Faça o upload e parse primeiro.",
+        )
+
+    job_id = f"classify_{mes}_{int(time.time())}"
+    job_store.create(job_id, mes=mes, steps=CLASSIFY_ONLY_STEPS)
+
+    thread = threading.Thread(
+        target=run_classify_pipeline,
+        args=(job_id, mes),
+        kwargs={"use_llm": body.use_llm},
+        daemon=True,
+    )
+    thread.start()
+
+    return {"job_id": job_id, "status": "started", "mes": mes}
+
+
 @router.get("/process/status/{job_id}")
-def get_process_status(job_id: str):
-    if job_id not in process_jobs:
-        raise HTTPException(status_code=404, detail="Job não encontrado")
-    return process_jobs[job_id]
+def get_job_status(job_id: str) -> dict:
+    job = job_store.get(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' não encontrado.")
+    return job.to_dict()
+
+
+@router.get("/process/jobs")
+def list_jobs() -> list[dict]:
+    return [job.to_dict() for job in job_store.all()]

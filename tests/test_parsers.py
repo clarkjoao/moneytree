@@ -59,6 +59,19 @@ def test_fatura_skip_pagamento_efetuado() -> None:
     )
 
 
+def test_fatura_skip_zero_amount() -> None:
+    line = "12/03/2026 AJUSTE OU RESUMO  0,00"
+    assert (
+        parse_fatura_line_for_tests(
+            line,
+            default_year=2026,
+            fonte="fatura",
+            cartao_final=None,
+        )
+        is None
+    )
+
+
 def test_fatura_credito_desc() -> None:
     line = "05/01/2026 DESC ANTECIPA PARCELAS  -80,00"
     transaction = parse_fatura_line_for_tests(

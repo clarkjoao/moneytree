@@ -60,7 +60,7 @@ function DialogContent({
       role="dialog"
       aria-modal="true"
       className={cn(
-        "relative z-10 flex max-h-[90vh] w-full max-w-[480px] flex-col overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 text-zinc-100 shadow-xl",
+        "relative z-10 flex max-h-[90vh] w-full max-w-[480px] flex-col overflow-hidden rounded-xl border border-border bg-card text-foreground shadow-xl",
         className
       )}
       onClick={(event) => event.stopPropagation()}
@@ -70,7 +70,7 @@ function DialogContent({
         <button
           type="button"
           onClick={onClose}
-          className="absolute right-3 top-3 rounded-md p-1.5 text-zinc-400 transition-colors hover:bg-zinc-800 hover:text-zinc-100"
+          className="absolute right-3 top-3 rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           aria-label="Fechar"
         >
           <XIcon className="size-4" />
@@ -84,7 +84,7 @@ function DialogContent({
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("flex flex-col gap-1 border-b border-zinc-800 px-6 pb-4 pt-6 pr-14", className)}
+      className={cn("flex flex-col gap-1 border-b border-border px-6 pb-4 pt-6 pr-14", className)}
       {...props}
     />
   )
@@ -93,14 +93,14 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
 function DialogTitle({ className, ...props }: React.ComponentProps<"h2">) {
   return (
     <h2
-      className={cn("text-lg font-semibold leading-tight text-zinc-50", className)}
+      className={cn("text-lg font-semibold leading-tight text-foreground", className)}
       {...props}
     />
   )
 }
 
 function DialogDescription({ className, ...props }: React.ComponentProps<"div">) {
-  return <div className={cn("text-sm text-zinc-400", className)} {...props} />
+  return <div className={cn("text-sm text-muted-foreground", className)} {...props} />
 }
 
 function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
@@ -112,7 +112,7 @@ function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
-      className={cn("flex flex-col gap-3 border-t border-zinc-800 bg-zinc-950/40 px-6 py-4", className)}
+      className={cn("flex flex-col gap-3 border-t border-border bg-background/40 px-6 py-4", className)}
       {...props}
     />
   )

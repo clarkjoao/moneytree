@@ -14,6 +14,9 @@ from backend.parsers.banks.itau.markitdown_fallback import record_unparsed_page
 
 logger = logging.getLogger(__name__)
 
+# Metade esquerda da página (lançamentos atuais); evita fusão com coluna direita.
+_LEFT_COL_RATIO = 0.52
+
 _RE_AMOUNT_BR = re.compile(r"(-?)\s*([\d]{1,3}(?:\.[\d]{3})*,\d{2}|\d+,\d{2})\s*$")
 _RE_DATE_HEAD = re.compile(
     r"^(\d{2})/(\d{2})(?:/(\d{2,4}))?\s+(.+)$",
@@ -31,6 +34,62 @@ _RE_IGNORE_SECTION = re.compile(
     r"compras\s+parceladas.*pr[oó]xim(?:a|as)\s+faturas",
     re.IGNORECASE,
 )
+
+_RE_METADADO_LIMITE = re.compile(
+    r"limite\s*(total|disponível|utilizado|máximo|de\s*cr[eé]dito|de\s*saque)|"
+    r"encargos?\s*cobrados|"
+    r"juros\s*(de\s*mora|da\s*compra)|"
+    r"multa\s*por\s*atraso|"
+    r"iof\s*de\s*financiamento|"
+    r"valor\s*(total\s*financiado|solicitado|do\s*iof)|"
+    r"parcelas?\s*fixas|"
+    r"pagamento\s*m[ií]nimo|"
+    r"d[oó]lar\s*de\s*convers[aã]o|"
+    r"fique\s*atento|"
+    r"novo\s*teto\s*de\s*juros",
+    re.IGNORECASE,
+)
+
+_RE_SECTION_HEADER = re.compile(
+    r"^(data\s+estabelecimento|lançamentos[:\s]|compras\s+parceladas|"
+    r"saúde\s*\.|vestuário\s*\.|alimentação\s*\.|veículos\s*\.|"
+    r"diversos\s*\.|serviços\s*\.|lazer\s*\.)",
+    re.IGNORECASE,
+)
+
+_RE_FUSED_LINE = re.compile(
+    r"^(.+?)\s+(\d{1,3}(?:\.\d{3})*,\d{2})\s+(\d{2}/\d{2})\s+([A-Z0-9].*)$"
+)
+
+
+def _extract_left_column_text(page: pdfplumber.page.Page) -> str:
+    """
+    Extrai apenas a metade esquerda da página para evitar contaminação
+    da coluna direita (parceladas próximas faturas / limites de crédito).
+
+    O PDF da fatura Itaú usa layout de duas colunas. A coluna esquerda
+    contém os lançamentos atuais; a direita contém parcelamentos futuros
+    e informações de limite que não são transações.
+    """
+    width = page.width
+    height = page.height
+    left_col = page.crop((0, 0, width * _LEFT_COL_RATIO, height))
+    return left_col.extract_text(layout=False) or ""
+
+
+def _split_fused_line(line: str) -> list[str]:
+    """
+    Detecta e separa linhas onde duas transações foram fundidas.
+
+    Conservador: o crop da coluna esquerda resolve a maioria dos casos;
+    não faz split agressivo para evitar falsos positivos.
+    """
+    stripped = line.strip()
+    if re.match(r"^\d{2}/\d{2}", stripped):
+        return [line]
+    if _RE_FUSED_LINE.match(stripped):
+        logger.debug("Linha com padrão de fusão (não dividida): %s", stripped[:120])
+    return [line]
 
 
 def _parse_br_float(amount_token: str) -> float:
@@ -71,6 +130,11 @@ def _current_card_from_text(block: str) -> str | None:
     if not match:
         return None
     return match.group(1) or match.group(2)
+
+
+_RE_SUSPICIOUS = re.compile(
+    r"\d{1,3}(?:\.\d{3})*,\d{2}\s+\d{2}/\d{2}\s+[A-Z]",
+)
 
 
 def _is_probable_resume_after_parceladas_section(stripped: str) -> bool:
@@ -132,6 +196,9 @@ def _parse_line_to_transaction(
     sign, amount_raw = amount_match.group(1), amount_match.group(2)
     description = rest[: amount_match.start()].strip()
     valor_absoluto = abs(_parse_br_float(amount_raw))
+    if valor_absoluto <= 0:
+        logger.debug("Linha com valor zero ignorada na fatura (%s): %s", fonte, stripped[:120])
+        return None
 
     international = _RE_INTERNATIONAL.search(stripped)
     metadados: dict | None = None
@@ -207,43 +274,57 @@ class ItauFaturaParser(BaseParser):
 
         with pdfplumber.open(str(filepath)) as pdf:
             for page_index, page in enumerate(pdf.pages):
-                text = page.extract_text(layout=False) or ""
-                card_hint = _current_card_from_text(text)
+                full_text = page.extract_text(layout=False) or ""
+                card_hint = _current_card_from_text(full_text)
                 if card_hint:
                     current_card = card_hint
 
-                for raw_line in text.splitlines():
-                    stripped = raw_line.strip()
-                    card_from_line = _current_card_from_text(raw_line)
-                    if card_from_line:
-                        current_card = card_from_line
+                text = _extract_left_column_text(page)
 
-                    if skip_parceladas:
-                        if _is_probable_resume_after_parceladas_section(stripped):
-                            skip_parceladas = False
-                        else:
+                for raw_line in text.splitlines():
+                    for segment in _split_fused_line(raw_line):
+                        stripped = segment.strip()
+                        if not stripped:
+                            continue
+
+                        card_from_line = _current_card_from_text(segment)
+                        if card_from_line:
+                            current_card = card_from_line
+
+                        if skip_parceladas:
+                            if _is_probable_resume_after_parceladas_section(stripped):
+                                skip_parceladas = False
+                            else:
+                                self.filtered_lines += 1
+                                continue
+
+                        if _RE_IGNORE_SECTION.search(stripped):
+                            skip_parceladas = True
                             self.filtered_lines += 1
                             continue
 
-                    if _RE_IGNORE_SECTION.search(stripped):
-                        skip_parceladas = True
-                        self.filtered_lines += 1
-                        continue
+                        if _RE_METADADO_LIMITE.search(stripped):
+                            self.filtered_lines += 1
+                            continue
 
-                    upper_line = stripped.upper()
-                    if upper_line.startswith("PAGAMENTO EFETUADO"):
-                        self.filtered_lines += 1
-                        continue
+                        if _RE_SECTION_HEADER.match(stripped):
+                            self.filtered_lines += 1
+                            continue
 
-                    transaction = _parse_line_to_transaction(
-                        raw_line,
-                        default_year=year,
-                        fonte=self.fonte,
-                        cartao_final=current_card,
-                    )
-                    if transaction:
-                        transactions.append(transaction)
-                        page_counts[page_index] = page_counts.get(page_index, 0) + 1
+                        upper_line = stripped.upper()
+                        if upper_line.startswith("PAGAMENTO EFETUADO"):
+                            self.filtered_lines += 1
+                            continue
+
+                        transaction = _parse_line_to_transaction(
+                            segment,
+                            default_year=year,
+                            fonte=self.fonte,
+                            cartao_final=current_card,
+                        )
+                        if transaction:
+                            transactions.append(transaction)
+                            page_counts[page_index] = page_counts.get(page_index, 0) + 1
 
                 if use_fallback and month_dir is not None:
                     if _page_needs_fallback(page, page_counts.get(page_index, 0)):
@@ -255,5 +336,21 @@ class ItauFaturaParser(BaseParser):
                                 page_index + 1,
                                 filepath.name,
                             )
+
+        suspicious = [
+            tx
+            for tx in transactions
+            if _RE_SUSPICIOUS.search(tx.descricao_original)
+            or "limite" in tx.descricao_original.lower()
+            or tx.valor > 10000
+        ]
+        if suspicious:
+            logger.warning(
+                "Parse (%s): %d transação(ões) com descrição suspeita de fusão de colunas:",
+                self.fonte,
+                len(suspicious),
+            )
+            for tx in suspicious:
+                logger.warning("  val=%.2f desc=%s", tx.valor, tx.descricao_original[:80])
 
         return transactions

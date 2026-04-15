@@ -412,7 +412,7 @@ def _run_duckdb_on_rows(rows: list[dict], mes: str, prior_months: list[str]) -> 
                     descricao_exibicao=_merchant_label(str(descricao), str(metodo)),
                     valor_mes=round(valor_mes_f, 2),
                     variacao_percentual_vs_media_3m=var_pct,
-                    transaction_ids=list(transaction_ids) if transaction_ids else [],
+                    transaction_ids=[str(tid) for tid in transaction_ids] if transaction_ids else [],
                 )
             )
 

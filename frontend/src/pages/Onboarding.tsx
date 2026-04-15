@@ -15,14 +15,14 @@ export default function Onboarding() {
   return (
     <div className="flex-1 p-6 md:p-10 max-w-3xl mx-auto space-y-8 animate-in fade-in duration-500 pb-28">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight text-neutral-50 mb-2">Bem-vindo</h1>
-        <p className="text-neutral-400">Visão geral do MoneyTree em poucos minutos.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground mb-2">Bem-vindo</h1>
+        <p className="text-muted-foreground">Visão geral do MoneyTree em poucos minutos.</p>
       </div>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="p-6 md:p-8 space-y-3">
           <h2 className="text-lg font-semibold text-emerald-400">O que é o MoneyTree</h2>
-          <p className="text-neutral-300 leading-relaxed text-sm md:text-base">
+          <p className="text-foreground/80 leading-relaxed text-sm md:text-base">
             O MoneyTree consolida faturas e extratos em uma visão única e multidimensional. Em vez de uma única
             categoria por transação, cada gasto tem seis dimensões: categoria, natureza, contexto, recorrência,
             compromisso e meio de pagamento.
@@ -30,7 +30,7 @@ export default function Onboarding() {
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-zinc-800 overflow-hidden">
+      <Card className="bg-card border-border overflow-hidden">
         <CardContent className="p-6 md:p-8 space-y-6">
           <h2 className="text-lg font-semibold text-emerald-400">Como funciona o fluxo</h2>
           <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:justify-between md:gap-2">
@@ -41,12 +41,12 @@ export default function Onboarding() {
                     {step.n}
                   </span>
                   {index < steps.length - 1 && (
-                    <span className="hidden md:block text-xs text-zinc-600 mt-1">→</span>
+                    <span className="hidden md:block text-xs text-muted-foreground mt-1">→</span>
                   )}
                 </div>
                 <div>
-                  <p className="font-medium text-neutral-100 text-sm">{step.title}</p>
-                  <p className="text-xs text-neutral-500 mt-0.5 leading-snug">{step.sub}</p>
+                  <p className="font-medium text-foreground text-sm">{step.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{step.sub}</p>
                 </div>
               </div>
             ))}
@@ -54,23 +54,23 @@ export default function Onboarding() {
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="p-6 md:p-8 space-y-3">
           <h2 className="text-lg font-semibold text-emerald-400">A dimensão mais importante: Compromisso</h2>
-          <p className="text-neutral-300 leading-relaxed text-sm md:text-base">
+          <p className="text-foreground/80 leading-relaxed text-sm md:text-base">
             Sua fatura de R$ 4.696 não significa que você gastou R$ 4.696 neste mês. Parte é parcelamento de compras
-            anteriores. O MoneyTree separa: <strong className="text-neutral-100 font-medium">gasto novo</strong>{' '}
-            (decisão deste mês), <strong className="text-neutral-100 font-medium">parcelas anteriores</strong>{' '}
-            (decisão já tomada) e <strong className="text-neutral-100 font-medium">assinaturas</strong> (recorrente).
+            anteriores. O MoneyTree separa: <strong className="text-foreground font-medium">gasto novo</strong>{' '}
+            (decisão deste mês), <strong className="text-foreground font-medium">parcelas anteriores</strong>{' '}
+            (decisão já tomada) e <strong className="text-foreground font-medium">assinaturas</strong> (recorrente).
             Isso responde: quanto eu decidi gastar agora?
           </p>
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="p-6 md:p-8 space-y-3">
           <h2 className="text-lg font-semibold text-emerald-400">Contexto: o custo real de uma viagem</h2>
-          <p className="text-neutral-300 leading-relaxed text-sm md:text-base">
+          <p className="text-foreground/80 leading-relaxed text-sm md:text-base">
             Uma viagem de trabalho aparece em vários lugares: hotel no cartão, gasolina via Pix, almoço no débito, Uber
             no cartão. O sistema detecta o contexto de cada lançamento e soma tudo. Resultado: você vê quanto suas
             viagens para SP custam em média por mês.
@@ -78,10 +78,10 @@ export default function Onboarding() {
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="p-6 md:p-8 space-y-3">
           <h2 className="text-lg font-semibold text-emerald-400">O ciclo de aprendizado</h2>
-          <p className="text-neutral-300 leading-relaxed text-sm md:text-base">
+          <p className="text-foreground/80 leading-relaxed text-sm md:text-base">
             Mês 1: cerca de 20% classificado automaticamente — você revisa o restante. Mês 2: ~50% automático. Mês 3:
             ~80% automático. Cada confirmação vira regra. Depois de alguns ciclos, a revisão manual fica concentrada em
             estabelecimentos novos.
@@ -89,7 +89,7 @@ export default function Onboarding() {
         </CardContent>
       </Card>
 
-      <Card className="bg-zinc-900 border-zinc-800">
+      <Card className="bg-card border-border">
         <CardContent className="p-6 md:p-8 space-y-4">
           <h2 className="text-lg font-semibold text-emerald-400">Por onde começar</h2>
           <div className="flex flex-col sm:flex-row flex-wrap gap-3">
@@ -106,7 +106,7 @@ export default function Onboarding() {
               to="/upload"
               className={cn(
                 buttonVariants({ variant: 'outline' }),
-                'border-zinc-700 bg-transparent text-neutral-200 justify-center'
+                'border-border bg-transparent text-foreground justify-center'
               )}
             >
               Fazer Upload
@@ -115,7 +115,7 @@ export default function Onboarding() {
               to="/"
               className={cn(
                 buttonVariants({ variant: 'outline' }),
-                'border-zinc-700 bg-transparent text-neutral-200 justify-center'
+                'border-border bg-transparent text-foreground justify-center'
               )}
             >
               Ver o Dashboard

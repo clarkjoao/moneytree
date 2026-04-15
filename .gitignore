@@ -207,8 +207,9 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
-
+.DS_Store
 # MoneyTree — dados locais e artefatos de build
+backend/config/llm_config.json
 backend/data/raw/
 backend/data/processed/
 frontend/node_modules/
