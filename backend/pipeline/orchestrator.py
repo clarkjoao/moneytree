@@ -41,6 +41,10 @@ def _step_error(job_id: str, step_name: str, error: str) -> None:
     )
 
 
+def _update_step_detail(job_id: str, step_name: str, detail: str) -> None:
+    job_store.update_step(job_id, step_name, detail=detail)
+
+
 def run_parse(job_id: str, use_fallback: bool = False) -> dict:
     """
     Etapa 1: Lê os PDFs em data/raw/ e grava fatura.json / extrato.json.
@@ -51,6 +55,7 @@ def run_parse(job_id: str, use_fallback: bool = False) -> dict:
         detect_month_key,
         write_transactions_json,
     )
+    from backend.models.transaction import dedupe_transactions
     from backend.parsers.registry import resolve_parser_for_pdf
 
     _step_start(job_id, "parse")
@@ -58,11 +63,19 @@ def run_parse(job_id: str, use_fallback: bool = False) -> dict:
         by_month_fatura: dict[str, list] = defaultdict(list)
         by_month_extrato: dict[str, list] = defaultdict(list)
         files_seen = 0
+        files = sorted(RAW_DIR.glob("*.pdf"))
+        job_store.update_counters(
+            job_id,
+            files_total=len(files),
+            files_processed=0,
+            transactions_extracted=0,
+        )
 
-        for pdf_path in sorted(RAW_DIR.glob("*.pdf")):
+        for pdf_path in files:
             resolved = resolve_parser_for_pdf(pdf_path)
             if resolved is None:
                 logger.warning("Nenhum parser para %s", pdf_path.name)
+                job_store.update_counters(job_id, files_processed=files_seen)
                 continue
             files_seen += 1
             month_key = detect_month_key(pdf_path.name)
@@ -85,14 +98,30 @@ def run_parse(job_id: str, use_fallback: bool = False) -> dict:
                 by_month_fatura[month_key].extend(items)
             else:
                 by_month_extrato[month_key].extend(items)
+            extracted_so_far = sum(len(items) for items in by_month_fatura.values()) + sum(
+                len(items) for items in by_month_extrato.values()
+            )
+            job_store.update_job(job_id, mes=month_key)
+            job_store.update_counters(
+                job_id,
+                files_processed=files_seen,
+                transactions_extracted=extracted_so_far,
+                transactions_total=extracted_so_far,
+                transactions_pending=extracted_so_far,
+            )
+            _update_step_detail(
+                job_id,
+                "parse",
+                f"{files_seen}/{len(files)} arquivo(s) · {extracted_so_far} transações extraídas",
+            )
 
         total = 0
         detected_mes: str | None = None
         for month_key in sorted(set(by_month_fatura) | set(by_month_extrato)):
             month_dir = PROCESSED_ROOT / month_key
             month_dir.mkdir(parents=True, exist_ok=True)
-            fatura_list = by_month_fatura.get(month_key, [])
-            extrato_list = by_month_extrato.get(month_key, [])
+            fatura_list = dedupe_transactions(by_month_fatura.get(month_key, []))
+            extrato_list = dedupe_transactions(by_month_extrato.get(month_key, []))
             if fatura_list:
                 write_transactions_json(month_dir / "fatura.json", fatura_list)
             if extrato_list:
@@ -100,6 +129,13 @@ def run_parse(job_id: str, use_fallback: bool = False) -> dict:
             total += len(fatura_list) + len(extrato_list)
             detected_mes = month_key
 
+        job_store.update_counters(
+            job_id,
+            files_processed=files_seen,
+            transactions_extracted=total,
+            transactions_total=total,
+            transactions_pending=total,
+        )
         detail = f"{total} transações extraídas de {files_seen} arquivo(s)"
         _step_done(job_id, "parse", detail)
         return {"mes": detected_mes, "total_transactions": total, "files_parsed": files_seen}
@@ -126,15 +162,27 @@ def run_classify(job_id: str, mes: str, use_llm: bool = True) -> dict:
             CONFIG_DIR,
             use_llm=use_llm,
             llm_client=llm_client,
+            progress_callback=lambda payload: _on_classify_progress(job_id, payload),
         )
         por_regra = stats["por_regra"]
         por_llm = stats["por_llm"]
         revisao = stats["revisao"]
         total = stats["total"]
+        pending = stats["pendentes_finais"]
+        classified = stats["classificadas"]
+        job_store.update_counters(
+            job_id,
+            transactions_total=total,
+            transactions_classified=classified,
+            transactions_pending=pending,
+            transactions_review=revisao,
+            llm_batches_failed=stats["lotes_llm_falhos"],
+        )
         detail = (
             f"{total} transações · "
             f"{por_regra} por regra · "
             f"{por_llm} por LLM · "
+            f"{pending} pendentes · "
             f"{revisao} para revisão"
         )
         _step_done(job_id, "classify", detail)
@@ -143,6 +191,43 @@ def run_classify(job_id: str, mes: str, use_llm: bool = True) -> dict:
     except Exception as exc:
         _step_error(job_id, "classify", str(exc))
         raise
+
+
+def _on_classify_progress(job_id: str, payload: dict[str, int | str]) -> None:
+    phase = str(payload.get("phase", ""))
+    total = int(payload.get("total", 0))
+    pending = int(payload.get("pending", 0))
+    classified = int(payload.get("classified", 0))
+    review = payload.get("review")
+    lotes_llm_falhos = payload.get("lotes_llm_falhos")
+
+    counters: dict[str, int | None] = {
+        "transactions_total": total,
+        "transactions_classified": classified,
+        "transactions_pending": pending,
+    }
+    if isinstance(review, int):
+        counters["transactions_review"] = review
+    if isinstance(lotes_llm_falhos, int):
+        counters["llm_batches_failed"] = lotes_llm_falhos
+    job_store.update_counters(job_id, **counters)
+
+    if phase == "loaded":
+        detail = f"Carregadas {total} transações para classificar"
+    elif phase == "rules_applied":
+        por_regra = int(payload.get("por_regra", 0))
+        detail = f"Regras concluídas · {por_regra} classificadas · {pending} pendentes"
+    elif phase == "llm_running":
+        llm_processed = int(payload.get("llm_processed", 0))
+        llm_total = int(payload.get("llm_total", 0))
+        detail = f"LLM {llm_processed}/{llm_total} · {classified} classificadas · {pending} pendentes"
+    elif phase == "finished":
+        review_count = int(payload.get("review", 0))
+        detail = f"Classificação concluída · {classified} classificadas · {pending} pendentes · {review_count} revisão"
+    else:
+        detail = f"{classified} classificadas · {pending} pendentes"
+
+    _update_step_detail(job_id, "classify", detail)
 
 
 def run_analyze(job_id: str, mes: str) -> dict:
@@ -172,16 +257,34 @@ def run_analyze(job_id: str, mes: str) -> dict:
         raise
 
 
+EXTRACT_ONLY_STEPS = [
+    ("parse", "Extraindo transações dos PDFs"),
+]
+
 PIPELINE_STEPS = [
     ("parse", "Extraindo transações dos PDFs"),
     ("classify", "Classificando transações"),
     ("analyze", "Calculando métricas e anomalias"),
 ]
 
-CLASSIFY_ONLY_STEPS = [
+CLASSIFY_STEPS = [
     ("classify", "Classificando transações"),
     ("analyze", "Calculando métricas e anomalias"),
 ]
+
+
+def run_extract_pipeline(job_id: str, *, use_fallback: bool = False) -> None:
+    """Somente parse. Usado quando o usuário quer desacoplar extração da classificação."""
+    job_store.set_job_status(job_id, "running")
+    try:
+        result = run_parse(job_id, use_fallback=use_fallback)
+        mes = result["mes"]
+        if mes:
+            job_store.update_job(job_id, mes=mes)
+        job_store.set_job_status(job_id, "done")
+    except Exception as exc:
+        job_store.set_job_status(job_id, "error", error=str(exc))
+        logger.error("Pipeline extract falhou no job %s: %s", job_id, exc, exc_info=True)
 
 
 def run_full_pipeline(job_id: str, *, use_llm: bool = True, use_fallback: bool = False) -> None:

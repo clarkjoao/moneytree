@@ -11,11 +11,28 @@ import pdfplumber
 from backend.models.transaction import Classificacao, ParcelaInfo, Transaction
 from backend.parsers.base_parser import BaseParser
 from backend.parsers.banks.itau.markitdown_fallback import record_unparsed_page
+from backend.parsers.banks.itau._utils import _group_words_by_line as _group_words_by_line_shared
 
 logger = logging.getLogger(__name__)
 
-# Metade esquerda da página (lançamentos atuais); evita fusão com coluna direita.
-_LEFT_COL_RATIO = 0.52
+
+def _group_words_by_line(
+    words: list[dict],
+    tolerance: float = 3.0,
+) -> dict[float, list[dict]]:
+    """
+    Wrapper para compatibilidade com parser word-based.
+
+    Mantém função disponível neste módulo para reduzir impacto em migrações.
+    """
+    return {
+        top: [dict(word) for word in line_words]
+        for top, line_words in _group_words_by_line_shared(words, tolerance).items()
+    }
+
+# Coluna esquerda da página (lançamentos atuais); deixa espaço suficiente
+# para capturar o valor final sem encostar na coluna direita.
+_LEFT_COL_RATIO = 0.55
 
 _RE_AMOUNT_BR = re.compile(r"(-?)\s*([\d]{1,3}(?:\.[\d]{3})*,\d{2}|\d+,\d{2})\s*$")
 _RE_DATE_HEAD = re.compile(
@@ -34,6 +51,7 @@ _RE_IGNORE_SECTION = re.compile(
     r"compras\s+parceladas.*pr[oó]xim(?:a|as)\s+faturas",
     re.IGNORECASE,
 )
+_RE_PAYMENT_LINE = re.compile(r"^\d{2}/\d{2}\s+PAGAMENTO\s*EFETUADO", re.IGNORECASE)
 
 _RE_METADADO_LIMITE = re.compile(
     r"limite\s*(total|disponível|utilizado|máximo|de\s*cr[eé]dito|de\s*saque)|"
@@ -62,19 +80,21 @@ _RE_FUSED_LINE = re.compile(
 )
 
 
-def _extract_left_column_text(page: pdfplumber.page.Page) -> str:
+def _extract_left_column_lines(page: pdfplumber.page.Page) -> list[str]:
     """
-    Extrai apenas a metade esquerda da página para evitar contaminação
-    da coluna direita (parceladas próximas faturas / limites de crédito).
+    Reconstrói linhas da coluna esquerda via coordenadas XY.
 
-    O PDF da fatura Itaú usa layout de duas colunas. A coluna esquerda
-    contém os lançamentos atuais; a direita contém parcelamentos futuros
-    e informações de limite que não são transações.
+    `extract_text()` perde separadores e centavos em alguns PDFs do Itaú.
+    Usar `extract_words()` preserva os tokens e ainda evita mistura com
+    a coluna direita quando limitado ao `x0` da coluna válida.
     """
-    width = page.width
-    height = page.height
-    left_col = page.crop((0, 0, width * _LEFT_COL_RATIO, height))
-    return left_col.extract_text(layout=False) or ""
+    words = page.extract_words(use_text_flow=True, keep_blank_chars=False) or []
+    left_words = [word for word in words if float(word["x0"]) < page.width * _LEFT_COL_RATIO]
+    lines = _group_words_by_line(left_words)
+    return [
+        " ".join(str(word["text"]).strip() for word in lines[top] if str(word.get("text", "")).strip())
+        for top in sorted(lines)
+    ]
 
 
 def _split_fused_line(line: str) -> list[str]:
@@ -174,7 +194,7 @@ def _parse_line_to_transaction(
     if not stripped:
         return None
     upper = stripped.upper()
-    if upper.startswith("PAGAMENTO EFETUADO"):
+    if upper.startswith("PAGAMENTO EFETUADO") or _RE_PAYMENT_LINE.match(stripped):
         return None
 
     date_match = _RE_DATE_HEAD.match(stripped)
@@ -279,9 +299,7 @@ class ItauFaturaParser(BaseParser):
                 if card_hint:
                     current_card = card_hint
 
-                text = _extract_left_column_text(page)
-
-                for raw_line in text.splitlines():
+                for raw_line in _extract_left_column_lines(page):
                     for segment in _split_fused_line(raw_line):
                         stripped = segment.strip()
                         if not stripped:
@@ -312,7 +330,7 @@ class ItauFaturaParser(BaseParser):
                             continue
 
                         upper_line = stripped.upper()
-                        if upper_line.startswith("PAGAMENTO EFETUADO"):
+                        if upper_line.startswith("PAGAMENTO EFETUADO") or _RE_PAYMENT_LINE.match(stripped):
                             self.filtered_lines += 1
                             continue
 

@@ -13,7 +13,7 @@ from backend.analyzer.report import print_metrics_tabular, write_month_report
 from backend.classifier.llm_client import LLMClient
 from backend.classifier.pipeline import run_classify_month
 from backend.classifier.review import apply_review_csv, open_csv_for_editing, write_review_csv
-from backend.models.transaction import Transaction
+from backend.models.transaction import Transaction, dedupe_transactions
 from backend.parsers.registry import resolve_parser_for_pdf
 from backend.transaction_store import load_month_transactions
 
@@ -22,14 +22,22 @@ ROOT = Path(__file__).resolve().parent
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("moneytree")
 
-_RE_MONTH_IN_NAME = re.compile(r"(20\d{2})-(\d{2})")
+_RE_MONTH_IN_NAME = re.compile(
+    r"(20\d{2})-(\d{2})"
+    r"|"
+    r"(20\d{2})(\d{2})\d{2}",
+)
 
 
 def detect_month_key(filename: str) -> str:
     match = _RE_MONTH_IN_NAME.search(filename)
     if match:
-        year, month = match.group(1), match.group(2)
-        return f"{year}-{month}"
+        if match.group(1) and match.group(2):
+            return f"{match.group(1)}-{match.group(2)}"
+        if match.group(3) and match.group(4):
+            year, month = match.group(3), match.group(4)
+            if 1 <= int(month) <= 12:
+                return f"{year}-{month}"
     from datetime import date
 
     today = date.today()
@@ -54,7 +62,8 @@ def default_year_from_month_key(month_key: str) -> int:
 
 def write_transactions_json(path: Path, transactions: list[Transaction]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    payload = [transaction.model_dump(mode="json") for transaction in transactions]
+    deduped = dedupe_transactions(transactions)
+    payload = [transaction.model_dump(mode="json") for transaction in deduped]
     with path.open("w", encoding="utf-8") as handle:
         json.dump(payload, handle, ensure_ascii=False, indent=2)
 
@@ -114,7 +123,7 @@ def parse_command(input_dir: Path, use_fallback: bool) -> int:
         if extrato_list:
             write_transactions_json(month_dir / "extrato.json", extrato_list)
 
-        combined = fatura_list + extrato_list
+        combined = dedupe_transactions(fatura_list + extrato_list)
         total_transactions += len(combined)
 
     logger.info("Arquivos PDF reconhecidos: %s (ignorados: %s)", files_seen, skipped_files)

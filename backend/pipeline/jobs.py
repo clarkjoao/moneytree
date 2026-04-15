@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Literal
 
 StepStatus = Literal["pending", "running", "done", "skipped", "error"]
 JobStatus = Literal["pending", "running", "done", "error"]
+JobKind = Literal["extract", "classify", "pipeline"]
 
 
 @dataclass
@@ -27,23 +28,56 @@ class StepResult:
 
 
 @dataclass
+class JobCounters:
+    files_total: int | None = None
+    files_processed: int | None = None
+    transactions_total: int | None = None
+    transactions_extracted: int | None = None
+    transactions_classified: int | None = None
+    transactions_pending: int | None = None
+    transactions_review: int | None = None
+    llm_batches_failed: int | None = None
+
+
+@dataclass
 class Job:
     id: str
+    kind: JobKind
     mes: str
     status: JobStatus = "pending"
     steps: list[StepResult] = field(default_factory=list)
+    counters: JobCounters = field(default_factory=JobCounters)
     created_at: float = field(default_factory=time.time)
     finished_at: float | None = None
     error: str | None = None
 
+    def current_step(self) -> StepResult | None:
+        running = next((step for step in self.steps if step.status == "running"), None)
+        if running is not None:
+            return running
+        done = [step for step in self.steps if step.status == "done"]
+        if done:
+            return done[-1]
+        return self.steps[0] if self.steps else None
+
     def to_dict(self) -> dict:
+        current_step = self.current_step()
         return {
             "id": self.id,
+            "kind": self.kind,
             "mes": self.mes,
             "status": self.status,
             "error": self.error,
             "created_at": self.created_at,
             "finished_at": self.finished_at,
+            "current_step": {
+                "name": current_step.name,
+                "label": current_step.label,
+                "status": current_step.status,
+            }
+            if current_step
+            else None,
+            "counters": asdict(self.counters),
             "steps": [
                 {
                     "name": step.name,
@@ -65,9 +99,10 @@ class JobStore:
         self._jobs: dict[str, Job] = {}
         self._lock = threading.Lock()
 
-    def create(self, job_id: str, mes: str, steps: list[tuple[str, str]]) -> Job:
+    def create(self, job_id: str, kind: JobKind, mes: str, steps: list[tuple[str, str]]) -> Job:
         job = Job(
             id=job_id,
+            kind=kind,
             mes=mes,
             steps=[StepResult(name=name, label=label) for name, label in steps],
         )
@@ -101,6 +136,15 @@ class JobStore:
                 return
             for key, value in kwargs.items():
                 setattr(job, key, value)
+
+    def update_counters(self, job_id: str, **kwargs: int | None) -> None:
+        with self._lock:
+            job = self._jobs.get(job_id)
+            if not job:
+                return
+            for key, value in kwargs.items():
+                if hasattr(job.counters, key):
+                    setattr(job.counters, key, value)
 
     def set_job_status(self, job_id: str, status: JobStatus, error: str | None = None) -> None:
         with self._lock:

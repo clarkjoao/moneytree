@@ -9,8 +9,10 @@ from pydantic import BaseModel
 
 from backend.pipeline.jobs import job_store
 from backend.pipeline.orchestrator import (
-    CLASSIFY_ONLY_STEPS,
+    CLASSIFY_STEPS,
+    EXTRACT_ONLY_STEPS,
     PIPELINE_STEPS,
+    run_extract_pipeline,
     run_classify_pipeline,
     run_full_pipeline,
 )
@@ -22,6 +24,24 @@ class ProcessRequest(BaseModel):
     use_llm: bool = True
 
 
+@router.post("/process/extract")
+def start_extract_pipeline() -> dict:
+    """
+    Inicia apenas a extração (parse) dos PDFs enviados.
+    """
+    job_id = f"extract_{int(time.time())}"
+    job_store.create(job_id, kind="extract", mes="detectando...", steps=EXTRACT_ONLY_STEPS)
+
+    thread = threading.Thread(
+        target=run_extract_pipeline,
+        args=(job_id,),
+        daemon=True,
+    )
+    thread.start()
+
+    return {"job_id": job_id, "status": "started", "kind": "extract"}
+
+
 @router.post("/process/upload")
 def start_upload_pipeline(body: ProcessRequest) -> dict:
     """
@@ -29,7 +49,7 @@ def start_upload_pipeline(body: ProcessRequest) -> dict:
     Usado pelo fluxo de upload quando o frontend quer processar tudo de uma vez.
     """
     job_id = f"upload_{int(time.time())}"
-    job_store.create(job_id, mes="detectando...", steps=PIPELINE_STEPS)
+    job_store.create(job_id, kind="pipeline", mes="detectando...", steps=PIPELINE_STEPS)
 
     thread = threading.Thread(
         target=run_full_pipeline,
@@ -39,10 +59,10 @@ def start_upload_pipeline(body: ProcessRequest) -> dict:
     )
     thread.start()
 
-    return {"job_id": job_id, "status": "started"}
+    return {"job_id": job_id, "status": "started", "kind": "pipeline"}
 
 
-@router.post("/process/{mes}")
+@router.post("/process/classify/{mes}")
 def start_classify_pipeline(mes: str, body: ProcessRequest) -> dict:
     """
     Inicia classify + analyze para um mês já parseado.
@@ -57,7 +77,7 @@ def start_classify_pipeline(mes: str, body: ProcessRequest) -> dict:
         )
 
     job_id = f"classify_{mes}_{int(time.time())}"
-    job_store.create(job_id, mes=mes, steps=CLASSIFY_ONLY_STEPS)
+    job_store.create(job_id, kind="classify", mes=mes, steps=CLASSIFY_STEPS)
 
     thread = threading.Thread(
         target=run_classify_pipeline,
@@ -67,7 +87,15 @@ def start_classify_pipeline(mes: str, body: ProcessRequest) -> dict:
     )
     thread.start()
 
-    return {"job_id": job_id, "status": "started", "mes": mes}
+    return {"job_id": job_id, "status": "started", "mes": mes, "kind": "classify"}
+
+
+@router.post("/process/{mes}")
+def start_classify_pipeline_legacy(mes: str, body: ProcessRequest) -> dict:
+    """
+    Alias legado para manter compatibilidade com o frontend antigo.
+    """
+    return start_classify_pipeline(mes, body)
 
 
 @router.get("/process/status/{job_id}")

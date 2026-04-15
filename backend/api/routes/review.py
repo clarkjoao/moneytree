@@ -47,4 +47,8 @@ def update_transaction(transaction_id: str, payload: ReviewPayload):
             new_classificacao
         )
         
-    return {"status": "success", "transaction_id": transaction_id}
+    return {
+        "status": "success",
+        "transaction_id": transaction_id,
+        "transaction": target_tx.model_dump(mode="json"),
+    }

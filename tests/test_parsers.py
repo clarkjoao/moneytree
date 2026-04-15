@@ -59,6 +59,19 @@ def test_fatura_skip_pagamento_efetuado() -> None:
     )
 
 
+def test_fatura_skip_pagamento_efetuado_with_date_prefix() -> None:
+    line = "02/03 PAGAMENTOEFETUADO7426 -9.177,74"
+    assert (
+        parse_fatura_line_for_tests(
+            line,
+            default_year=2026,
+            fonte="fatura",
+            cartao_final=None,
+        )
+        is None
+    )
+
+
 def test_fatura_skip_zero_amount() -> None:
     line = "12/03/2026 AJUSTE OU RESUMO  0,00"
     assert (
@@ -123,6 +136,7 @@ def test_extrato_metadata_filters() -> None:
     assert extrato_metadata_kind("FATURA PAGA PERSON MULTI") == "pagamento_fatura"
     assert extrato_metadata_kind("SALDO DO DIA") == "saldo"
     assert extrato_metadata_kind("REND PAGO APLIC AUT MAIS") == "rendimento_aplicacao"
+    assert extrato_metadata_kind("COR RENDIMENTO CDB DI") == "rendimento_aplicacao"
 
     transaction, kind = try_parse_extrato_line(
         "01/03/2026 ITAU BLACK CARTAO  -5.000,00",
@@ -131,6 +145,20 @@ def test_extrato_metadata_filters() -> None:
     )
     assert transaction is None
     assert kind == "pagamento_fatura"
+
+
+def test_extrato_line_with_balance_column() -> None:
+    line = "06/04/2026 PIX ENVIADO  -63,89  2.390,73"
+    transaction, metadata_kind = try_parse_extrato_line(
+        line,
+        fonte="extrato_2026-04",
+        default_year=2026,
+    )
+    assert metadata_kind is None
+    assert transaction is not None
+    assert transaction.data == date(2026, 4, 6)
+    assert transaction.tipo == "debito"
+    assert transaction.valor == pytest.approx(63.89)
 
 
 def test_extrato_rendimento_jsonl(tmp_path: Path) -> None:
@@ -199,3 +227,38 @@ def test_fallback_triggers_record_unparsed(tmp_path: Path) -> None:
             use_fallback=True,
         )
         record_mock.assert_called_once()
+
+
+def test_fatura_parse_with_words_preserves_decimal_amounts(tmp_path: Path) -> None:
+    fake_page = MagicMock()
+    fake_page.width = 595.27
+    fake_page.extract_text.return_value = "JOAO LUIS CLARK final 1354"
+    fake_page.extract_words.return_value = [
+        {"text": "JOAOLUISSLCLARK(final1354)", "x0": 120.0, "top": 235.3},
+        {"text": "18/12", "x0": 151.2, "top": 253.3},
+        {"text": "RaiaDrogasilSA", "x0": 178.2, "top": 253.3},
+        {"text": "04/05", "x0": 229.8, "top": 253.3},
+        {"text": "359,80", "x0": 319.3, "top": 253.3},
+        {"text": "24/02", "x0": 367.2, "top": 253.3},
+        {"text": "RAIA372", "x0": 394.2, "top": 253.3},
+        {"text": "6,78", "x0": 543.0, "top": 253.3},
+    ]
+
+    fake_pdf = MagicMock()
+    fake_pdf.pages = [fake_page]
+
+    parser = ItauFaturaParser(fonte="fatura_test", default_year=2026)
+    pdf_path = Path("dummy_fatura.pdf")
+
+    with patch("backend.parsers.banks.itau.fatura.pdfplumber.open") as open_mock:
+        open_mock.return_value.__enter__.return_value = fake_pdf
+        open_mock.return_value.__exit__.return_value = None
+        items = parser.parse_with_options(
+            pdf_path,
+            month_dir=tmp_path,
+            use_fallback=False,
+        )
+
+    assert len(items) == 1
+    assert items[0].descricao_original == "RaiaDrogasilSA 04/05"
+    assert items[0].valor == pytest.approx(359.8)

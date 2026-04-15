@@ -6,7 +6,7 @@ from pathlib import Path
 
 from pydantic import TypeAdapter
 
-from backend.models.transaction import Classificacao, Transaction
+from backend.models.transaction import Classificacao, Transaction, dedupe_transactions
 
 logger = logging.getLogger(__name__)
 
@@ -59,7 +59,7 @@ def load_month_transactions(processed_root: Path, month_key: str) -> list[Transa
     for filename in ("fatura.json", "extrato.json"):
         for transaction in load_transactions_json(month_dir / filename):
             combined.append(apply_overlay(transaction, overlay))
-    return combined
+    return dedupe_transactions(combined)
 
 
 def save_classificacao_snapshot(month_dir: Path, month_key: str, transactions: list[Transaction]) -> Path:

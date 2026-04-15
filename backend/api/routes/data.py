@@ -53,27 +53,36 @@ class TaxonomyAddRequest(BaseModel):
     valor: str
 
 
-@router.post("/taxonomy/categoria")
-def add_categoria(body: TaxonomyAddRequest):
+def _add_taxonomy_value(field_name: str, body: TaxonomyAddRequest) -> dict:
     path = CONFIG_ROOT / "taxonomia.json"
     if not path.exists():
         raise HTTPException(status_code=404, detail="taxonomia.json não encontrado")
     data = json.loads(path.read_text(encoding="utf-8"))
     valor = body.valor.strip()
-    if valor and valor not in data["categorias"]:
-        data["categorias"].append(valor)
+    values = data.get(field_name)
+    if not isinstance(values, list):
+        raise HTTPException(status_code=400, detail=f"Campo inválido na taxonomia: {field_name}")
+    if valor and valor not in values:
+        values.append(valor)
         path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"categorias": data["categorias"]}
+    return {field_name: values}
+
+
+@router.post("/taxonomy/categoria")
+def add_categoria(body: TaxonomyAddRequest):
+    return _add_taxonomy_value("categorias", body)
 
 
 @router.post("/taxonomy/natureza")
 def add_natureza(body: TaxonomyAddRequest):
-    path = CONFIG_ROOT / "taxonomia.json"
-    if not path.exists():
-        raise HTTPException(status_code=404, detail="taxonomia.json não encontrado")
-    data = json.loads(path.read_text(encoding="utf-8"))
-    valor = body.valor.strip()
-    if valor and valor not in data["natureza"]:
-        data["natureza"].append(valor)
-        path.write_text(json.dumps(data, ensure_ascii=False, indent=2), encoding="utf-8")
-    return {"natureza": data["natureza"]}
+    return _add_taxonomy_value("natureza", body)
+
+
+@router.post("/taxonomy/recorrencia")
+def add_recorrencia(body: TaxonomyAddRequest):
+    return _add_taxonomy_value("recorrencia", body)
+
+
+@router.post("/taxonomy/contexto")
+def add_contexto(body: TaxonomyAddRequest):
+    return _add_taxonomy_value("contextos", body)

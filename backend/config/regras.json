@@ -1,5 +1,398 @@
 {
-  "por_descricao": {},
+  "por_descricao": {
+    "RaiaDrogasilSA 04/05": {
+      "recorrencia": "Pontual",
+      "categoria": "Saúde",
+      "contexto": "Rotina Campinas",
+      "compromisso": "parcela",
+      "natureza": "Essencial"
+    },
+    "RaiaDrogasilSA 05/05": {
+      "recorrencia": "Pontual",
+      "categoria": "Saúde",
+      "contexto": "Rotina Campinas",
+      "compromisso": "parcela",
+      "natureza": "Essencial"
+    },
+    "JcBaterias 03/03": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "parcela",
+      "natureza": "Lazer"
+    },
+    "GOLLINHASAEREAS02/03": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "GOLLINHASAEREAS03/03": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "GOLLINHASAEREASS.A.": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Receita"
+    },
+    "ARENAESPORTESPAULINI": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "BOLAOBEACHTENNIS": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "SaraDeAlmeida": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "VagnerPereira 01/04": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "parcela",
+      "natureza": "Lazer"
+    },
+    "UberUBER*TRIPHELP.U": {
+      "recorrencia": "Pontual",
+      "categoria": "Transporte",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "RRBLAVANDERIASLTDA": {
+      "recorrencia": "Pontual",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "MULTICOISASCAMPINAS": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "TagItau *JOAOCLARK": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "PANIFICADORAILPANETI": {
+      "recorrencia": "Variável recorrente",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "ZP *IUPPTAGITA": {
+      "recorrencia": "Variável recorrente",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "TeiviaLealFreitas": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "SAVILLEEMPREENDIMENTO": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Transferência"
+    },
+    "99Food*99Food": {
+      "recorrencia": "Variável recorrente",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "FIBRA": {
+      "recorrencia": "Fixa",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "assinatura",
+      "natureza": "Essencial"
+    },
+    "DAYTONAPARKING": {
+      "recorrencia": "Pontual",
+      "categoria": "Transporte",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "DESCANTECIPAPARCELAS": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Transferência"
+    },
+    "IFD*IFOODCLUB": {
+      "recorrencia": "Variável recorrente",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "ELIANAPIRESBARIONE": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Transferência"
+    },
+    "EskimoLojaDe": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Transferência"
+    },
+    "CLUBEDOSBEBEDORES": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "BarbeariaDon": {
+      "recorrencia": "Pontual",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "MtsConsultoria": {
+      "recorrencia": "Pontual",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "VetsTecnologia": {
+      "recorrencia": "Pontual",
+      "categoria": "Saúde",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "OXXOJULIOMESQUITA": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "SUPERMERCADOSDALBEN": {
+      "recorrencia": "Pontual",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "PAINEIRASSPORTSAABB": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "PAINEIRASBEACHSPORTS": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "RAIADROGASILSA": {
+      "recorrencia": "Pontual",
+      "categoria": "Saúde",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "BUSSERVICOS*CLICKBUS": {
+      "recorrencia": "Pontual",
+      "categoria": "Transporte",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "PETZCAMPINASNORTESU": {
+      "recorrencia": "Pontual",
+      "categoria": "Saúde",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "IFD*MANAPOKEDELIVERY": {
+      "recorrencia": "Pontual",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "3848GRSAVIAMUNDI": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "LATAMAIR*0000 02/04": {
+      "recorrencia": "Pontual",
+      "categoria": "Transporte",
+      "contexto": "Rotina Campinas",
+      "compromisso": "parcela",
+      "natureza": "Essencial"
+    },
+    "AMAZONBR": {
+      "recorrencia": "Pontual",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "MERCADO*MERCADOLIV01/10": {
+      "recorrencia": "Pontual",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "MERCADO*MERCADOLIVRE": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "DL*99RIDE": {
+      "recorrencia": "Pontual",
+      "categoria": "Transporte",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "AmazonPrimeBR": {
+      "recorrencia": "Fixa",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "assinatura",
+      "natureza": "Essencial"
+    },
+    "99Food*LUPABURGERSC": {
+      "recorrencia": "Pontual",
+      "categoria": "Alimentação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "GoogleYouTubePremium": {
+      "recorrencia": "Fixa",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "assinatura",
+      "natureza": "Essencial"
+    },
+    "CLAROPGTOFATUMENSAL": {
+      "recorrencia": "Fixa",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "assinatura",
+      "natureza": "Essencial"
+    },
+    "MERCADOLIVRE*MERCADOL": {
+      "recorrencia": "Pontual",
+      "categoria": "Outros",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Transferência"
+    },
+    "TOTALPASS": {
+      "recorrencia": "Fixa",
+      "categoria": "Serviços Digitais",
+      "contexto": "Rotina Campinas",
+      "compromisso": "assinatura",
+      "natureza": "Essencial"
+    },
+    "TRMFCONSULT*SunoM07/12": {
+      "recorrencia": "Pontual",
+      "categoria": "Educação",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Essencial"
+    },
+    "HOPIHARI 06/06": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "parcela",
+      "natureza": "Lazer"
+    },
+    "GOLLINHASA*CAKHI03/05": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "GOLLINHASA*CAKHI04/05": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "GOLLINHASA*CAKHI05/05": {
+      "recorrencia": "Pontual",
+      "categoria": "Transporte",
+      "contexto": "Viagem",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    },
+    "Vivaralojavivara-02/02": {
+      "recorrencia": "Pontual",
+      "categoria": "Vestuário",
+      "contexto": "Rotina Campinas",
+      "compromisso": "parcela",
+      "natureza": "Essencial"
+    },
+    "AIRBNB*HMPFMHAE201/03": {
+      "recorrencia": "Pontual",
+      "categoria": "Lazer",
+      "contexto": "Rotina Campinas",
+      "compromisso": "a_vista",
+      "natureza": "Lazer"
+    }
+  },
   "mapeamentos": [],
   "padroes_descricao": [
     {

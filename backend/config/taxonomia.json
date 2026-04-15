@@ -12,14 +12,16 @@
     "Transferência",
     "Transferência Interna",
     "Receita",
-    "Outros"
+    "Outros",
+    "Hotel"
   ],
   "natureza": [
     "Essencial",
     "Lazer",
     "Investimento",
     "Imposto",
-    "Transferência"
+    "Transferência",
+    "Viajem Maceió"
   ],
   "recorrencia": [
     "Fixa",

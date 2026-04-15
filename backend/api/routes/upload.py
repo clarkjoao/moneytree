@@ -1,5 +1,6 @@
 import re
 import shutil
+from datetime import date
 from pathlib import Path
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile
@@ -37,6 +38,22 @@ def _target_filename(bank: str, mes: str, original_filename: str, index: int) ->
     if bank == "itau":
         return f"FATURA_MASTERCARD_{mes}_{base_hint}.pdf"
     return f"{bank}_{mes}_{base_hint}.pdf"
+
+
+@router.get("/detect-mes")
+def detect_mes_from_filename(filename: str) -> dict:
+    """
+    Detecta mês no nome do arquivo para pré-preenchimento do upload.
+
+    Ex.: Fatura_Itau_20260414-212309.pdf -> {"mes": "2026-04", "confianca": "alta"}
+    """
+    from backend.cli import detect_month_key
+
+    mes = detect_month_key(filename)
+    today = date.today()
+    mes_hoje = f"{today.year:04d}-{today.month:02d}"
+    confianca = "baixa" if mes == mes_hoje else "alta"
+    return {"mes": mes, "confianca": confianca}
 
 
 @router.post("/upload")

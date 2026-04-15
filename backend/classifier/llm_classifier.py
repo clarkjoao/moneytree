@@ -4,6 +4,7 @@ import json
 import logging
 import re
 from pathlib import Path
+from typing import Callable
 
 from backend.models.transaction import Classificacao, Transaction
 
@@ -125,6 +126,7 @@ def classify_with_llm(
     taxonomia_path: Path,
     perfil_path: Path,
     client: LLMClient | None = None,
+    progress_callback: Callable[[dict[str, int]], None] | None = None,
 ) -> tuple[int, int]:
     """
     Classifica transações pendentes em lotes. Retorna (sucesso, falhas de lote).
@@ -174,6 +176,15 @@ def classify_with_llm(
                 start + len(batch) - 1,
             )
             batch_failures += 1
+            if progress_callback is not None:
+                progress_callback(
+                    {
+                        "processed": min(start + len(batch), len(pending)),
+                        "total": len(pending),
+                        "success": success_count,
+                        "batch_failures": batch_failures,
+                    }
+                )
             continue
 
         seen_ids = set()
@@ -192,5 +203,15 @@ def classify_with_llm(
                     "Transação %s não retornada pelo LLM; mantida pendente",
                     transaction.id,
                 )
+
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "processed": min(start + len(batch), len(pending)),
+                    "total": len(pending),
+                    "success": success_count,
+                    "batch_failures": batch_failures,
+                }
+            )
 
     return success_count, batch_failures
