@@ -391,6 +391,358 @@
       "contexto": "Rotina Campinas",
       "compromisso": "a_vista",
       "natureza": "Lazer"
+    },
+    "GOMES PENEUS": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Outros",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "CENTRAL DOS PARAFUSOS": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Investimento",
+      "natureza": "Lazer",
+      "contexto": ""
+    },
+    "LojasRiachuelo": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Educação",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "GRANDE RIO VEICULOS LT": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Lazer",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "MA TRATOR PECAS": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Vestuário",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "POSTO GAMA": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "SEMEAR MACEIO": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Investimento",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "COAGRO": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Investimento",
+      "natureza": "Lazer",
+      "contexto": ""
+    },
+    "ASSAI ATACADISTA LJ289": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Transferência",
+      "natureza": "Lazer",
+      "contexto": ""
+    },
+    "M.A TRATOR PECAS": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Transferência",
+      "natureza": "Lazer",
+      "contexto": ""
+    },
+    "62759615Erivaldo": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Transferência Interna",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "CENTROTELHAS": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Transferência Interna",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "GRUTA CONSTRUCAO": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Receita",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "POSTO CORURIPE": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Outros",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "POSTO SANTO ANTONIO": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Outros",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "JONAS GERMANO DA SILV": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Outros",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "O PARAFUSAO": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Outros",
+      "natureza": "Lazer",
+      "contexto": ""
+    },
+    "PALATO": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "POSTO LUAR DO FRANCE": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "ALL COOK": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Receita",
+      "natureza": "Investimento",
+      "contexto": ""
+    },
+    "J VONALDO DA SILVA REB": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Receita",
+      "natureza": "Investimento",
+      "contexto": ""
+    },
+    "SUPERMERCADO ALVORADA": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Transferência Interna",
+      "natureza": "Investimento",
+      "contexto": ""
+    },
+    "CAFE DA ZANE": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Receita",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "JIM.COM* TEM TEM": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Outros",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "LEROY MERLIN": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Outros",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "REI DO MATE LEROY MERL": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Transferência Interna",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "HB ALIMENTOS": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Receita",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "EduardoPneus": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Transferência Interna",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "POSTO ECOLOGICO": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Investimento",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "DL*GOOGLE YouTub": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "PAGUE MENOS 1348": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Vestuário",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "DARUMA RESTAURANTE JAP": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Vestuário",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "COMERCIAL LAMBU": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Vestuário",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "RESTAURANTE SAO LUIZ": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Vestuário",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "BpCombustiveis": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Imposto",
+      "contexto": ""
+    },
+    "CASA DO FARELO": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "MERCADINHO QUITANDA": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "SEGURO CARTAO CTP": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "UNI BEM SUPERMERCADO": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "FARMACIA PAG*1348": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "ZP *SMART SHOP": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Transferência",
+      "contexto": ""
+    },
+    "MP *MELIMAIS": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Serviços Digitais",
+      "natureza": "Viajem Maceió",
+      "contexto": ""
+    },
+    "EBN *PLAYSTATION": {
+      "labels": [],
+      "compromisso": "a_vista",
+      "recorrencia": "",
+      "categoria": "Investimento",
+      "natureza": "Essencial",
+      "contexto": ""
+    },
+    "MEC AUTOPARTES": {
+      "labels": [],
+      "compromisso": "parcela",
+      "recorrencia": "",
+      "categoria": "Investimento",
+      "natureza": "Investimento",
+      "contexto": ""
     }
   },
   "mapeamentos": [],

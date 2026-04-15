@@ -8,8 +8,10 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from backend.models.transaction import Classificacao, Transaction
+from backend.parsers.banks.inter.fatura import InterFaturaParser
 from backend.parsers.banks.itau.extrato import extrato_metadata_kind, try_parse_extrato_line
 from backend.parsers.banks.itau.fatura import ItauFaturaParser, parse_fatura_line_for_tests
+from backend.parsers.registry import resolve_parser_for_pdf
 from backend.classifier.rule_engine import apply_rule_engine
 
 
@@ -262,3 +264,62 @@ def test_fatura_parse_with_words_preserves_decimal_amounts(tmp_path: Path) -> No
     assert len(items) == 1
     assert items[0].descricao_original == "RaiaDrogasilSA 04/05"
     assert items[0].valor == pytest.approx(359.8)
+
+
+@pytest.fixture
+def inter_fatura_path() -> Path:
+    path = Path("backend/data/raw/inter/fatura-inter-2026-04.pdf")
+    if not path.exists():
+        pytest.skip("PDF de fatura Inter não encontrado")
+    return path
+
+
+def test_inter_fatura_retorna_transacoes(inter_fatura_path: Path) -> None:
+    txs = InterFaturaParser(fonte="fatura-inter-2026-04").parse(inter_fatura_path)
+    assert len(txs) > 0
+
+
+def test_inter_fatura_meio_e_tipo(inter_fatura_path: Path) -> None:
+    txs = InterFaturaParser(fonte="fatura-inter-2026-04").parse(inter_fatura_path)
+    assert all(tx.meio == "cartao_credito" for tx in txs)
+    assert all(tx.tipo == "debito" for tx in txs)
+
+
+def test_inter_fatura_parcelas_preenchidas(inter_fatura_path: Path) -> None:
+    txs = InterFaturaParser(fonte="fatura-inter-2026-04").parse(inter_fatura_path)
+    parceladas = [tx for tx in txs if tx.parcela_info is not None]
+    assert len(parceladas) > 0
+    for tx in parceladas:
+        assert tx.parcela_info is not None
+        assert tx.parcela_info.numero >= 1
+        assert tx.parcela_info.total >= tx.parcela_info.numero
+
+
+def test_inter_fatura_sem_pagamento_fatura(inter_fatura_path: Path) -> None:
+    txs = InterFaturaParser(fonte="fatura-inter-2026-04").parse(inter_fatura_path)
+    assert not any("PAGAMENTO DE FATURA" in tx.descricao_original.upper() for tx in txs)
+
+
+def test_inter_fatura_cartao_final_preenchido(inter_fatura_path: Path) -> None:
+    txs = InterFaturaParser(fonte="fatura-inter-2026-04").parse(inter_fatura_path)
+    assert all(tx.cartao_final is not None for tx in txs)
+    assert all(len(tx.cartao_final or "") == 4 for tx in txs)
+
+
+def test_inter_fatura_multiplos_cartoes(inter_fatura_path: Path) -> None:
+    txs = InterFaturaParser(fonte="fatura-inter-2026-04").parse(inter_fatura_path)
+    cartoes = {tx.cartao_final for tx in txs}
+    assert len(cartoes) > 1
+
+
+def test_inter_fatura_ids_unicos(inter_fatura_path: Path) -> None:
+    txs = InterFaturaParser(fonte="fatura-inter-2026-04").parse(inter_fatura_path)
+    ids = [tx.id for tx in txs]
+    assert len(ids) == len(set(ids))
+
+
+def test_inter_fatura_registry_resolve(inter_fatura_path: Path) -> None:
+    resolved = resolve_parser_for_pdf(inter_fatura_path)
+    assert resolved is not None
+    assert resolved.bucket == "fatura"
+    assert resolved.create is InterFaturaParser

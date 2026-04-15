@@ -8,6 +8,7 @@ from typing import Callable, Literal
 import pdfplumber
 
 from backend.parsers.base_parser import BaseParser
+from backend.parsers.banks.inter.fatura import InterFaturaParser
 from backend.parsers.banks.itau.extrato import ItauExtratoParser
 from backend.parsers.banks.itau.fatura import ItauFaturaParser
 
@@ -49,6 +50,10 @@ def _filename_itau_extrato(name_upper: str) -> bool:
     return name_upper.startswith("ITAU_EXTRATO") or "ITAU_EXTRATO" in name_upper
 
 
+def _filename_inter_fatura(name_upper: str) -> bool:
+    return "INTER" in name_upper and "FATURA" in name_upper
+
+
 def _text_suggests_itau(text_upper: str) -> bool:
     return "ITAU" in text_upper or "ITAÚ" in text_upper
 
@@ -71,7 +76,16 @@ def _fingerprint_itau_extrato(text_upper: str) -> bool:
     return _text_suggests_itau(text_upper) or "CONTA CORRENTE" in text_upper
 
 
+def _fingerprint_inter_fatura(text_upper: str) -> bool:
+    if not text_upper:
+        return False
+    if "INTER" not in text_upper:
+        return False
+    return ("FATURA" in text_upper or "VENCIMENTO" in text_upper) and "R$" in text_upper
+
+
 _REGISTRY: list[tuple[Callable[[str], bool], Callable[[str], bool], Bucket, ParserFactory]] = [
+    (_filename_inter_fatura, _fingerprint_inter_fatura, "fatura", InterFaturaParser),
     (_filename_itau_fatura, _fingerprint_itau_fatura, "fatura", ItauFaturaParser),
     (_filename_itau_extrato, _fingerprint_itau_extrato, "extrato", ItauExtratoParser),
 ]
@@ -82,14 +96,22 @@ def resolve_parser_for_pdf(pdf_path: Path) -> ResolvedParser | None:
     Escolhe o parser adequado pelo nome do arquivo; se inconclusivo, usa a primeira página.
     """
     name_upper = pdf_path.name.upper()
+    filename_match: ResolvedParser | None = None
     for filename_hit, fingerprint_hit, bucket, factory in _REGISTRY:
         if filename_hit(name_upper):
-            return ResolvedParser(bucket=bucket, create=factory)
+            filename_match = ResolvedParser(bucket=bucket, create=factory)
+            break
 
     text_upper = _first_page_text_upper(pdf_path)
     for _filename_hit, fingerprint_hit, bucket, factory in _REGISTRY:
         if fingerprint_hit(text_upper):
+            if filename_match is not None and filename_match.bucket != bucket:
+                logger.info(
+                    "Parser resolvido por fingerprint sobrepondo nome do arquivo: %s → %s",
+                    pdf_path.name,
+                    bucket,
+                )
             logger.info("Parser resolvido por fingerprint: %s → %s", pdf_path.name, bucket)
             return ResolvedParser(bucket=bucket, create=factory)
 
-    return None
+    return filename_match

@@ -36,15 +36,16 @@ type UploadAction = 'extract' | 'pipeline'
 const LAST_UPLOAD_BANK_KEY = 'moneytree.last-upload-bank'
 const UPLOAD_BANK_OPTIONS: Array<{ id: UploadBank; label: string }> = [
   { id: 'itau', label: 'Itaú' },
+  { id: 'inter', label: 'Inter' },
 ]
 
 function getInitialUploadBank(): UploadBank {
   const stored = localStorage.getItem(LAST_UPLOAD_BANK_KEY)
-  return stored === 'itau' ? 'itau' : 'itau'
+  return stored === 'inter' ? 'inter' : 'itau'
 }
 
 function toUploadBank(value: string | null): UploadBank {
-  return value === 'itau' ? 'itau' : 'itau'
+  return value === 'inter' ? 'inter' : 'itau'
 }
 
 interface FileMesDetection {

@@ -16,6 +16,19 @@
 - [x] Permitir reclassificar transações já classificadas no frontend.
 - [x] Melhorar o modal de classificação com criação inline de categorias, naturezas, recorrências e contextos.
 - [x] Validar backend/frontend após a refatoração.
+- [x] Inspecionar o modelo atual de classificação e a tela de transações para encaixar labels.
+- [x] Adicionar suporte a labels livres de associação no backend e na persistência.
+- [x] Expor edição e visualização de labels na tela/modal de transações.
+- [x] Validar backend/frontend e documentar o resultado.
+- [x] Inspecionar o PDF do Inter e o código de referência do parser/registry.
+- [x] Implementar parser Banco Inter em backend/parsers/banks/inter.
+- [x] Integrar fingerprint e filename hit do Inter no registry.
+- [x] Adicionar PDF de exemplo em backend/data/raw/inter/ e testes do parser.
+- [x] Validar com pytest e parse real do PDF.
+- [x] Reproduzir a falha do upload do frontend e identificar a causa raiz.
+- [x] Corrigir upload/frontend para suportar Banco Inter explicitamente.
+- [x] Tornar o registry resiliente a arquivos salvos com nome incorreto.
+- [x] Validar com parse real do arquivo já salvo no raw.
 
 # Review
 
@@ -33,3 +46,14 @@
 - Reclassificação: a tela de transações agora abre itens já classificados por padrão, permite salvar reclassificação e navega pelo conjunto visível, não só pelos pendentes.
 - UX do modal: o modal ganhou contexto visual da compra parcelada e criação inline de `categoria`, `natureza`, `recorrência` e `contexto`.
 - Validação adicional: `pytest tests/test_parsers.py tests/test_jobs.py tests/test_classifier.py tests/test_analyzer.py tests/test_transactions_identity.py -q` passou com `31 passed`; `npm run build` continuou verde.
+- Labels livres: `Classificacao` agora aceita `labels`, permitindo associações como `Compra Chuveiro Amazon` e `Jantar com Rafaela`.
+- UX de labels: o modal de transações permite editar labels em texto livre separado por vírgulas, e a lista já mostra os primeiros labels para leitura rápida.
+- Validação desta etapa: `pytest tests/test_classifier.py tests/test_transactions_identity.py tests/test_jobs.py tests/test_parsers.py -q` passou com `29 passed`; `npm run build` passou.
+- Parser Inter: implementado `InterFaturaParser` em `backend/parsers/banks/inter/fatura.py`, seguindo o padrão dos parsers Itaú com `BaseParser`, `pdfplumber.extract_words()` e `_group_words_by_line`.
+- Registry: adicionado reconhecimento por nome e fingerprint do texto da primeira página para faturas do Banco Inter.
+- PDF real: copiado para `backend/data/raw/inter/fatura-inter-2026-04.pdf` para servir de fixture de integração.
+- Validação Inter: `pytest tests/test_parsers.py -q` passou com `16 passed`; parse manual do PDF real extraiu `49` transações, com cartões `7446`, `2097` e `4066`.
+- Causa raiz do upload: o frontend/backend só ofereciam `Itaú`, então uma fatura do Inter foi salva como `FATURA_MASTERCARD_...`, e o registry roteava pelo nome para o parser Itaú, gerando zero transações.
+- Correção de upload: `Inter` agora está disponível no frontend e o backend salva com prefixo `INTER_FATURA_...`.
+- Correção de robustez: o registry agora deixa o fingerprint do conteúdo sobrepor o nome do arquivo, então PDFs já salvos com nome errado continuam parseando.
+- Validação da correção: o arquivo `backend/data/raw/FATURA_MASTERCARD_2026-04_fatura-inter-2026-04.pdf` foi resolvido para `InterFaturaParser` e extraiu `49` transações; `pytest tests/test_parsers.py -q` passou com `16 passed`; `npm run build` passou.

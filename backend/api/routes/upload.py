@@ -10,7 +10,7 @@ ROOT = Path(__file__).resolve().parents[2]
 RAW_DIR = ROOT / "data" / "raw"
 PROCESSED_ROOT = ROOT / "data" / "processed"
 
-_SUPPORTED_BANKS = {"itau"}
+_SUPPORTED_BANKS = {"itau", "inter"}
 
 
 def _normalize_bank(value: str) -> str:
@@ -37,6 +37,8 @@ def _target_filename(bank: str, mes: str, original_filename: str, index: int) ->
     base_hint = _safe_stem(original_filename, f"arquivo_{index + 1}")
     if bank == "itau":
         return f"FATURA_MASTERCARD_{mes}_{base_hint}.pdf"
+    if bank == "inter":
+        return f"INTER_FATURA_{mes}_{base_hint}.pdf"
     return f"{bank}_{mes}_{base_hint}.pdf"
 
 
