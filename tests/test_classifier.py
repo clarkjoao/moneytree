@@ -181,12 +181,40 @@ def test_append_exact_rule_writes_file(tmp_path: Path) -> None:
     classification = Classificacao(
         categoria="X",
         natureza="Essencial",
+        labels=["Compra Chuveiro Amazon"],
         metodo="confirmado",
         confianca=1.0,
     )
     append_exact_rule(path, "DESC EXATA", classification)
     payload = json.loads(path.read_text(encoding="utf-8"))
     assert payload["por_descricao"]["DESC EXATA"]["categoria"] == "X"
+    assert payload["por_descricao"]["DESC EXATA"]["labels"] == ["Compra Chuveiro Amazon"]
+
+
+def test_classificacao_labels_persist_in_snapshot(tmp_path: Path) -> None:
+    processed = tmp_path / "processed" / "2026-04"
+    processed.mkdir(parents=True)
+    transaction = Transaction(
+        id="tx_label",
+        data=date(2026, 4, 10),
+        descricao_original="AMAZON MARKETPLACE",
+        valor=199.9,
+        tipo="debito",
+        meio="cartao_credito",
+        fonte="fatura",
+        classificacao=Classificacao(
+            categoria="Outros",
+            natureza="Essencial",
+            labels=["Compra Chuveiro Amazon", "Casa"],
+            metodo="confirmado",
+            confianca=1.0,
+        ),
+    )
+    from backend.transaction_store import save_classificacao_snapshot
+
+    save_classificacao_snapshot(processed, "2026-04", [transaction])
+    payload = json.loads((processed / "classificacao_2026-04.json").read_text(encoding="utf-8"))
+    assert payload["by_id"]["tx_label"]["labels"] == ["Compra Chuveiro Amazon", "Casa"]
 
 
 def test_recurrence_duckdb_two_months(tmp_path: Path) -> None:

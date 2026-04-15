@@ -61,6 +61,7 @@ class Classificacao(BaseModel):
     recorrencia: str | None = None
     compromisso: CompromissoTipo | None = None
     contexto: str | None = None
+    labels: list[str] = Field(default_factory=list)
     metodo: MetodoClassificacao = "pendente"
     confianca: float = Field(default=0.0, ge=0.0, le=1.0)
     motivo_duvida: str | None = None

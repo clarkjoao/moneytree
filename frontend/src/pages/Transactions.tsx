@@ -69,6 +69,7 @@ interface TransactionRow {
     contexto?: string | null
     recorrencia?: string | null
     compromisso?: string | null
+    labels?: string[] | null
     metodo: string
     confianca?: number | null
   }
@@ -80,6 +81,7 @@ interface ClassificationFormState {
   contexto: string
   recorrencia: string
   compromisso: string
+  labelsText: string
 }
 
 function formatMeio(meio: TransactionRow['meio']): string {
@@ -116,6 +118,7 @@ export default function Transactions() {
     contexto: '',
     recorrencia: '',
     compromisso: '',
+    labelsText: '',
   })
   const [creatingField, setCreatingField] = useState<TaxonomyField | null>(null)
   const [newTaxonomyValue, setNewTaxonomyValue] = useState('')
@@ -216,6 +219,7 @@ export default function Transactions() {
       contexto: tx.classificacao?.contexto ?? '',
       recorrencia: tx.classificacao?.recorrencia ?? '',
       compromisso: tx.classificacao?.compromisso ?? '',
+      labelsText: (tx.classificacao?.labels ?? []).join(', '),
     })
   }
 
@@ -227,12 +231,25 @@ export default function Transactions() {
   const handlePersistClassification = () => {
     if (!selectedTx || !form.categoria.trim() || !form.natureza.trim()) return
     const nextTx = currentIndex >= 0 ? navigableTransactions[currentIndex + 1] : undefined
+    const labels = Array.from(
+      new Set(
+        form.labelsText
+          .split(',')
+          .map((item) => item.trim())
+          .filter(Boolean)
+      )
+    )
 
     patchMutation.mutate(
       {
         id: selectedTx.id,
         classificacao: {
-          ...form,
+          categoria: form.categoria,
+          natureza: form.natureza,
+          contexto: form.contexto,
+          recorrencia: form.recorrencia,
+          compromisso: form.compromisso,
+          labels,
           confianca: 1.0,
           metodo: 'confirmado',
         },
@@ -455,9 +472,24 @@ export default function Transactions() {
               >
                 <TableCell className="text-foreground/80 py-3">{formatDate(tx.data)}</TableCell>
                 <TableCell className="font-medium text-foreground">
-                  <div className="flex items-center gap-2">
-                    <span>{tx.descricao_original}</span>
-                    {tx.compra_id ? <Link2 className="w-3.5 h-3.5 text-emerald-400/80 shrink-0" /> : null}
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span>{tx.descricao_original}</span>
+                      {tx.compra_id ? <Link2 className="w-3.5 h-3.5 text-emerald-400/80 shrink-0" /> : null}
+                    </div>
+                    {tx.classificacao.labels?.length ? (
+                      <div className="flex flex-wrap gap-1">
+                        {tx.classificacao.labels.slice(0, 2).map((label) => (
+                          <Badge
+                            key={label}
+                            variant="outline"
+                            className="border-sky-500/25 bg-sky-500/10 text-sky-300"
+                          >
+                            {label}
+                          </Badge>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 </TableCell>
                 <TableCell className={tx.tipo === 'debito' ? 'text-red-400' : 'text-emerald-400'}>
@@ -519,6 +551,11 @@ export default function Transactions() {
                     Parcela {selectedTx.parcela_info.numero} de {selectedTx.parcela_info.total}
                   </Badge>
                 ) : null}
+                {selectedTx?.classificacao.labels?.map((label) => (
+                  <Badge key={label} variant="outline" className="border-sky-500/25 bg-sky-500/10 text-sky-300">
+                    {label}
+                  </Badge>
+                ))}
               </div>
               <div className="flex flex-col gap-1 text-xs text-muted-foreground">
                 <span>{selectedTx ? formatMeio(selectedTx.meio) : ''}</span>
@@ -572,6 +609,19 @@ export default function Transactions() {
               {renderTaxonomyField('natureza', 'Natureza', 'Selecione a natureza')}
               {renderTaxonomyField('recorrencia', 'Recorrência', 'Selecione a recorrência')}
               {renderTaxonomyField('contexto', 'Contexto', 'Selecione o contexto')}
+            </div>
+
+            <div className="grid gap-2">
+              <Label className="text-muted-foreground">Labels de associação</Label>
+              <Input
+                value={form.labelsText}
+                onChange={(event) => setForm((previous) => ({ ...previous, labelsText: event.target.value }))}
+                placeholder="Compra Chuveiro Amazon, Jantar com Rafaela"
+                className="bg-background border-border text-foreground"
+              />
+              <p className="text-xs text-muted-foreground">
+                Use vírgulas para separar labels livres que ajudem a identificar a transação.
+              </p>
             </div>
 
             <div className="grid gap-2">
